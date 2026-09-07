@@ -77,14 +77,21 @@ export function useStockfish() {
         if (nextFenRef.current && nextFenRef.current !== currentFenRef.current) {
           const nextFen = nextFenRef.current;
           nextFenRef.current = null;
-          analyzePosition(nextFen);
+          
+          isPendingRef.current = true;
+          currentFenRef.current = nextFen;
+          setIsAnalyzing(true);
+          setEvalData({ depth: 0, lines: [] });
+          
+          worker.postMessage(`position fen ${nextFen}`);
+          worker.postMessage(`go depth 18`);
         }
       }
     };
 
     worker.onerror = (err) => {
-      console.error("Stockfish worker error, restarting worker...", err);
-      initWorker();
+      console.warn("Stockfish worker encountered an error:", err);
+      // Removed initWorker() to prevent infinite restart loop on initialization failure
     };
 
     worker.postMessage("uci");
@@ -103,10 +110,17 @@ export function useStockfish() {
   const analyzePosition = useCallback((fen: string, depth: number = 18) => {
     if (!workerRef.current) return;
 
-    // Queue request if another search is in progress
+    if (isPendingRef.current) {
+      // Queue request if another search is in progress
+      nextFenRef.current = fen;
+      workerRef.current.postMessage("stop");
+      return;
+    }
+
+    isPendingRef.current = true;
     currentFenRef.current = fen;
-    workerRef.current.postMessage("stop");
     setIsAnalyzing(true);
+    setEvalData({ depth: 0, lines: [] });
 
     workerRef.current.postMessage(`position fen ${fen}`);
     workerRef.current.postMessage(`go depth ${depth}`);
