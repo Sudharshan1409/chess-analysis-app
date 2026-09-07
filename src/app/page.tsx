@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Chess, Square } from "chess.js";
 import { useStockfish } from "@/lib/useStockfish";
 import { EvalBar } from "@/components/EvalBar";
+import { HorizontalEvalBar } from "@/components/HorizontalEvalBar";
 import { MoveList, AnalyzedMove } from "@/components/MoveList";
 import { PgnFenModal } from "@/components/PgnFenModal";
 import { PromotionModal } from "@/components/PromotionModal";
@@ -134,8 +135,6 @@ export default function AnalysisPage() {
     // 2. Threat arrow calculation (Red) if enabled
     if (settings.showThreatArrows) {
       const activeChess = getActiveChess();
-      const opponentChess = new Chess(activeChess.fen());
-      // Temporarily swap turn to calculate opponent's best attacking move
       const tokens = activeChess.fen().split(" ");
       tokens[1] = tokens[1] === "w" ? "b" : "w";
       try {
@@ -430,18 +429,33 @@ export default function AnalysisPage() {
             </div>
           </div>
 
+          {/* Horizontal Evaluation Bar for Mobile directly in the gap above Rank 8 */}
+          {settings.showEvalBar && (
+            <div className="lg:hidden w-full">
+              <HorizontalEvalBar
+                score={topEval?.cp ?? null}
+                mate={topEval?.mate ?? null}
+                turn={currentTurn}
+                orientation={boardOrientation}
+                isAnalyzing={isAnalyzing}
+              />
+            </div>
+          )}
+
           {/* Square Board Area */}
           <div className="flex-1 w-full flex items-center justify-center min-h-0 py-1">
             <div className="h-full aspect-square max-w-full flex shadow-2xl rounded overflow-hidden border border-[#312e2b] bg-[#1d1b18] relative">
-              {/* Conditional Eval Bar */}
+              {/* Vertical Eval Bar for Desktop */}
               {settings.showEvalBar && (
-                <EvalBar
-                  score={topEval?.cp ?? null}
-                  mate={topEval?.mate ?? null}
-                  turn={currentTurn}
-                  orientation={boardOrientation}
-                  isAnalyzing={isAnalyzing}
-                />
+                <div className="hidden lg:block h-full">
+                  <EvalBar
+                    score={topEval?.cp ?? null}
+                    mate={topEval?.mate ?? null}
+                    turn={currentTurn}
+                    orientation={boardOrientation}
+                    isAnalyzing={isAnalyzing}
+                  />
+                </div>
               )}
 
               {/* Chess.com Authentic Board Theme */}
@@ -499,7 +513,7 @@ export default function AnalysisPage() {
                   })
                 )}
 
-                {/* SVG Overlay for Arrows */}
+                {/* SVG Overlay for Best Move Arrows */}
                 <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
                   <defs>
                     <marker id="arrowhead-cyan" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
@@ -541,19 +555,19 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Mobile Bottom Controls */}
+          {/* Mobile Bottom Navigation Controls Bar */}
           <div className="lg:hidden w-full bg-[#1e1c18] border-t border-[#312e2b] p-2 mt-2 rounded-lg shrink-0">
             <div className="grid grid-cols-4 gap-2">
-              <button onClick={goToStart} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold border border-[#383531]">
+              <button onClick={goToStart} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
                 <SkipBack className="w-5 h-5" />
               </button>
-              <button onClick={goToPrev} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold border border-[#383531]">
+              <button onClick={goToPrev} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
                 <ChevronLeft className="w-6 h-6" />
               </button>
-              <button onClick={goToNext} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold border border-[#383531]">
+              <button onClick={goToNext} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
                 <ChevronRight className="w-6 h-6" />
               </button>
-              <button onClick={goToEnd} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold border border-[#383531]">
+              <button onClick={goToEnd} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
                 <SkipForward className="w-5 h-5" />
               </button>
             </div>
