@@ -7,6 +7,7 @@ import { EvalBar } from "@/components/EvalBar";
 import { MoveList, AnalyzedMove } from "@/components/MoveList";
 import { PgnFenModal } from "@/components/PgnFenModal";
 import { PromotionModal } from "@/components/PromotionModal";
+import { SettingsModal, SettingsState } from "@/components/SettingsModal";
 import {
   RotateCcw,
   SkipBack,
@@ -20,7 +21,8 @@ import {
   Gamepad2,
   GraduationCap,
   Tv,
-  Users
+  Users,
+  Settings
 } from "lucide-react";
 
 export default function AnalysisPage() {
@@ -28,10 +30,20 @@ export default function AnalysisPage() {
   const [history, setHistory] = useState<AnalyzedMove[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   const [boardOrientation, setBoardOrientation] = useState<"white" | "black">("white");
-  const [arrows, setArrows] = useState<{ from: Square; to: Square }[]>([]);
+  const [arrows, setArrows] = useState<{ from: Square; to: Square; color?: string }[]>([]);
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Default assistance settings matching current state
+  const [settings, setSettings] = useState<SettingsState>({
+    showEvalBar: true,
+    showSuggestionArrows: true,
+    showThreatArrows: true,
+    showEngineLines: true,
+    enableSounds: true,
+  });
 
   // Promotion state
   const [pendingPromotion, setPendingPromotion] = useState<{
@@ -45,6 +57,8 @@ export default function AnalysisPage() {
 
   // Audio effects helper
   const playSound = useCallback((move: any, newGame?: Chess) => {
+    if (!settings.enableSounds) return;
+
     let audioFile = "/sounds/move-self.webm";
     let followUpSound: string | null = null;
 
@@ -76,7 +90,7 @@ export default function AnalysisPage() {
         }, 600);
       }
     }).catch(() => {});
-  }, []);
+  }, [settings.enableSounds]);
 
   // Helper to get FEN at current index
   const getCurrentFen = useCallback(() => {
@@ -103,32 +117,55 @@ export default function AnalysisPage() {
     }
   }, [currentMoveIndex, isReady, getCurrentFen, analyzePosition]);
 
-  // Update SVG arrows directly from top line's UCI move ("e2e4")
+  // Update SVG arrows directly from engine calculation
   useEffect(() => {
-    const topPV = evalData.lines[0]?.pvUci;
-    if (topPV && topPV.length > 0) {
-      const bestUci = topPV[0];
+    const newArrows: { from: Square; to: Square; color?: string }[] = [];
+
+    // 1. Suggestion arrow (Cyan)
+    if (settings.showSuggestionArrows && evalData.lines.length > 0 && evalData.lines[0]?.pvUci?.length > 0) {
+      const bestUci = evalData.lines[0].pvUci[0];
       if (bestUci && bestUci.length >= 4) {
         const from = bestUci.substring(0, 2) as Square;
         const to = bestUci.substring(2, 4) as Square;
-        setArrows([{ from, to }]);
-        return;
+        newArrows.push({ from, to, color: "rgba(56, 189, 248, 0.95)" });
       }
     }
-    setArrows([]);
-  }, [evalData.lines]);
 
-  // Make move (with promotion support)
+    // 2. Threat arrow calculation (Red) if enabled
+    if (settings.showThreatArrows) {
+      const activeChess = getActiveChess();
+      const opponentChess = new Chess(activeChess.fen());
+      // Temporarily swap turn to calculate opponent's best attacking move
+      const tokens = activeChess.fen().split(" ");
+      tokens[1] = tokens[1] === "w" ? "b" : "w";
+      try {
+        const threatChess = new Chess(tokens.join(" "));
+        const threatMoves = threatChess.moves({ verbose: true });
+        const captureMove = threatMoves.find((m) => m.captured);
+        if (captureMove) {
+          newArrows.push({
+            from: captureMove.from as Square,
+            to: captureMove.to as Square,
+            color: "rgba(239, 68, 68, 0.9)",
+          });
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    setArrows(newArrows);
+  }, [evalData.lines, settings.showSuggestionArrows, settings.showThreatArrows, getActiveChess]);
+
+  // Make move
   const makeMove = (from: Square, to: Square, promotionPiece?: "q" | "r" | "b" | "n") => {
     const activeChess = getActiveChess();
 
-    // Check if move is a pawn promotion
     const piece = activeChess.get(from);
     const isPawn = piece?.type === "p";
     const isPromotionRank = (piece?.color === "w" && to[1] === "8") || (piece?.color === "b" && to[1] === "1");
 
     if (isPawn && isPromotionRank && !promotionPiece) {
-      // Prompt promotion selection modal
       setPendingPromotion({ from, to, color: piece.color });
       return true;
     }
@@ -294,7 +331,7 @@ export default function AnalysisPage() {
   const activeChess = getActiveChess();
   const currentTurn = activeChess.turn();
 
-  // Top eval score for top line
+  // Top eval score
   const topEval = evalData.lines[0];
   const topScoreFormatted =
     topEval?.mate !== undefined && topEval?.mate !== null
@@ -310,7 +347,6 @@ export default function AnalysisPage() {
   const displayRanks = boardOrientation === "white" ? ranks : [...ranks].reverse();
   const displayFiles = boardOrientation === "white" ? files : [...files].reverse();
 
-  // Helper to convert rank/file to board percentage coordinates for SVG arrow drawing
   const getSquareCenterCoords = (sq: Square) => {
     const file = sq[0];
     const rank = sq[1];
@@ -368,9 +404,14 @@ export default function AnalysisPage() {
           <span className="text-emerald-500 font-black text-xl">♟</span>
           <span className="font-extrabold text-white text-base">Chess Analysis</span>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-1.5 bg-[#2d2a26] text-amber-400 px-3 py-1.5 rounded-md text-xs font-bold border border-[#3c3934]">
-          <Upload className="w-3.5 h-3.5" /> Import
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setIsSettingsOpen(true)} className="p-1.5 bg-[#2d2a26] text-gray-300 rounded-md border border-[#3c3934]">
+            <Settings className="w-4 h-4 text-amber-400" />
+          </button>
+          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-1.5 bg-[#2d2a26] text-amber-400 px-3 py-1.5 rounded-md text-xs font-bold border border-[#3c3934]">
+            <Upload className="w-3.5 h-3.5" /> Import
+          </button>
+        </div>
       </header>
 
       {/* 2. Main Workspace */}
@@ -392,13 +433,16 @@ export default function AnalysisPage() {
           {/* Square Board Area */}
           <div className="flex-1 w-full flex items-center justify-center min-h-0 py-1">
             <div className="h-full aspect-square max-w-full flex shadow-2xl rounded overflow-hidden border border-[#312e2b] bg-[#1d1b18] relative">
-              <EvalBar
-                score={topEval?.cp ?? null}
-                mate={topEval?.mate ?? null}
-                turn={currentTurn}
-                orientation={boardOrientation}
-                isAnalyzing={isAnalyzing}
-              />
+              {/* Conditional Eval Bar */}
+              {settings.showEvalBar && (
+                <EvalBar
+                  score={topEval?.cp ?? null}
+                  mate={topEval?.mate ?? null}
+                  turn={currentTurn}
+                  orientation={boardOrientation}
+                  isAnalyzing={isAnalyzing}
+                />
+              )}
 
               {/* Chess.com Authentic Board Theme */}
               <div className="flex-1 aspect-square grid grid-cols-8 grid-rows-8 relative chess-board-theme overflow-hidden">
@@ -455,24 +499,21 @@ export default function AnalysisPage() {
                   })
                 )}
 
-                {/* SVG Overlay for Best Move Arrows */}
+                {/* SVG Overlay for Arrows */}
                 <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
                   <defs>
-                    <marker
-                      id="arrowhead-cyan"
-                      markerWidth="6"
-                      markerHeight="6"
-                      refX="5"
-                      refY="3"
-                      orient="auto"
-                    >
+                    <marker id="arrowhead-cyan" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
                       <polygon points="0 0, 6 3, 0 6" fill="rgba(56, 189, 248, 0.95)" />
+                    </marker>
+                    <marker id="arrowhead-red" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                      <polygon points="0 0, 6 3, 0 6" fill="rgba(239, 68, 68, 0.95)" />
                     </marker>
                   </defs>
 
                   {arrows.map((arr, idx) => {
                     const start = getSquareCenterCoords(arr.from);
                     const end = getSquareCenterCoords(arr.to);
+                    const isRed = arr.color?.includes("239");
                     return (
                       <line
                         key={idx}
@@ -480,10 +521,10 @@ export default function AnalysisPage() {
                         y1={`${start.y}%`}
                         x2={`${end.x}%`}
                         y2={`${end.y}%`}
-                        stroke="rgba(56, 189, 248, 0.95)"
+                        stroke={arr.color || "rgba(56, 189, 248, 0.95)"}
                         strokeWidth="3.5"
                         strokeLinecap="round"
-                        markerEnd="url(#arrowhead-cyan)"
+                        markerEnd={isRed ? "url(#arrowhead-red)" : "url(#arrowhead-cyan)"}
                       />
                     );
                   })}
@@ -500,31 +541,19 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Mobile Bottom Navigation Controls Bar */}
+          {/* Mobile Bottom Controls */}
           <div className="lg:hidden w-full bg-[#1e1c18] border-t border-[#312e2b] p-2 mt-2 rounded-lg shrink-0">
             <div className="grid grid-cols-4 gap-2">
-              <button
-                onClick={goToStart}
-                className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]"
-              >
+              <button onClick={goToStart} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold border border-[#383531]">
                 <SkipBack className="w-5 h-5" />
               </button>
-              <button
-                onClick={goToPrev}
-                className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]"
-              >
+              <button onClick={goToPrev} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold border border-[#383531]">
                 <ChevronLeft className="w-6 h-6" />
               </button>
-              <button
-                onClick={goToNext}
-                className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]"
-              >
+              <button onClick={goToNext} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold border border-[#383531]">
                 <ChevronRight className="w-6 h-6" />
               </button>
-              <button
-                onClick={goToEnd}
-                className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]"
-              >
+              <button onClick={goToEnd} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold border border-[#383531]">
                 <SkipForward className="w-5 h-5" />
               </button>
             </div>
@@ -533,49 +562,58 @@ export default function AnalysisPage() {
 
         {/* 3. Right Sidebar Container */}
         <div className="w-full lg:w-[420px] h-full bg-[#262421] border border-[#312e2b] rounded-lg shadow-2xl flex flex-col shrink-0 overflow-hidden">
-          {/* Top Analysis Header */}
+          {/* Top Analysis Header with Gear Icon */}
           <div className="bg-[#1e1c18] px-4 py-3 border-b border-[#312e2b] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2 text-sm font-bold text-white">
               <Search className="w-4 h-4 text-emerald-400" />
               <span>Analysis</span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-gray-400 font-mono">
+            <div className="flex items-center gap-3 text-xs text-gray-400 font-mono">
               <span className="flex items-center gap-1 text-emerald-400">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                 Stockfish 18
               </span>
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="p-1 hover:bg-[#2d2a26] rounded text-gray-400 hover:text-amber-400 transition"
+                title="Assistance Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          {/* MultiPV Lines Section (Top 3 Lines) */}
-          <div className="bg-[#1e1c18] border-b border-[#312e2b] p-2 space-y-1.5 shrink-0">
-            {evalData.lines.slice(0, 3).map((line, idx) => {
-              const scoreStr =
-                line.mate !== null && line.mate !== undefined
-                  ? `M${line.mate}`
-                  : line.cp !== null && line.cp !== undefined
-                  ? `${line.cp > 0 ? "+" : ""}${(line.cp / 100).toFixed(2)}`
-                  : "0.00";
+          {/* Conditional MultiPV Engine Lines */}
+          {settings.showEngineLines && (
+            <div className="bg-[#1e1c18] border-b border-[#312e2b] p-2 space-y-1.5 shrink-0">
+              {evalData.lines.slice(0, 3).map((line, idx) => {
+                const scoreStr =
+                  line.mate !== null && line.mate !== undefined
+                    ? `M${line.mate}`
+                    : line.cp !== null && line.cp !== undefined
+                    ? `${line.cp > 0 ? "+" : ""}${(line.cp / 100).toFixed(2)}`
+                    : "0.00";
 
-              return (
-                <div key={idx} className="flex items-center gap-2 text-xs font-mono bg-[#262421] p-2 rounded border border-[#312e2b]">
-                  <span className="bg-[#312e2b] text-amber-400 px-2 py-0.5 rounded font-extrabold text-xs shrink-0">
-                    {scoreStr}
-                  </span>
-                  <div className="text-gray-300 truncate">
-                    {line.pvSan && line.pvSan.length > 0 ? (
-                      <span>
-                        <strong className="text-amber-300 mr-1">1. {line.pvSan[0]}</strong>
-                        {line.pvSan.slice(1, 6).join(" ")}
-                      </span>
-                    ) : (
-                      <span className="text-gray-500 italic">Calculating line {idx + 1}...</span>
-                    )}
+                return (
+                  <div key={idx} className="flex items-center gap-2 text-xs font-mono bg-[#262421] p-2 rounded border border-[#312e2b]">
+                    <span className="bg-[#312e2b] text-amber-400 px-2 py-0.5 rounded font-extrabold text-xs shrink-0">
+                      {scoreStr}
+                    </span>
+                    <div className="text-gray-300 truncate">
+                      {line.pvSan && line.pvSan.length > 0 ? (
+                        <span>
+                          <strong className="text-amber-300 mr-1">1. {line.pvSan[0]}</strong>
+                          {line.pvSan.slice(1, 6).join(" ")}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500 italic">Calculating line {idx + 1}...</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Move History Panel */}
           <div className="flex-1 overflow-hidden p-2 flex flex-col min-h-0 bg-[#262421]">
@@ -586,35 +624,19 @@ export default function AnalysisPage() {
             />
           </div>
 
-          {/* Desktop Bottom Bar: Navigation Controls + Flip Board */}
+          {/* Desktop Bottom Controls Bar */}
           <div className="hidden lg:flex bg-[#1e1c18] border-t border-[#312e2b] p-3 flex-col gap-2 shrink-0">
             <div className="grid grid-cols-4 gap-2">
-              <button
-                onClick={goToStart}
-                className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
-                title="First Move"
-              >
+              <button onClick={goToStart} className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold transition border border-[#383531]">
                 <SkipBack className="w-5 h-5" />
               </button>
-              <button
-                onClick={goToPrev}
-                className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
-                title="Previous Move"
-              >
+              <button onClick={goToPrev} className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold transition border border-[#383531]">
                 <ChevronLeft className="w-6 h-6" />
               </button>
-              <button
-                onClick={goToNext}
-                className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
-                title="Next Move"
-              >
+              <button onClick={goToNext} className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold transition border border-[#383531]">
                 <ChevronRight className="w-6 h-6" />
               </button>
-              <button
-                onClick={goToEnd}
-                className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
-                title="Last Move"
-              >
+              <button onClick={goToEnd} className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold transition border border-[#383531]">
                 <SkipForward className="w-5 h-5" />
               </button>
             </div>
@@ -647,7 +669,16 @@ export default function AnalysisPage() {
         </div>
       </div>
 
-      {/* Pawn Promotion Options Modal */}
+      {/* Assistance Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        settings={settings}
+        onUpdateSettings={(newSettings) =>
+          setSettings((prev) => ({ ...prev, ...newSettings }))
+        }
+        onClose={() => setIsSettingsOpen(false)}
+      />
+
       <PromotionModal
         isOpen={pendingPromotion !== null}
         color={pendingPromotion?.color || "w"}
