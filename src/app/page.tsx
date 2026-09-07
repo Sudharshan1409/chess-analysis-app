@@ -418,10 +418,10 @@ export default function AnalysisPage() {
 
       {/* 2. Main Workspace */}
       <div className="flex-1 h-full flex flex-col lg:flex-row p-2 lg:p-4 gap-4 items-center justify-center overflow-y-auto lg:overflow-hidden">
-        {/* Center Main Board Area - Centered and strictly 1:1 Aspect Square */}
+        {/* Center Main Board Area */}
         <div className="flex-1 h-full max-h-[calc(100vh-2rem)] flex flex-col items-center justify-center min-w-0">
           {/* Top Player Info (Black) */}
-          <div className="w-full max-w-[calc(100vh-140px)] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
+          <div className="w-full max-w-[min(720px,calc(100vh-100px))] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-[#312e2b] flex items-center justify-center text-gray-400 text-xs">👤</div>
               <span>{boardOrientation === "white" ? "Black" : "White"}</span>
@@ -434,7 +434,7 @@ export default function AnalysisPage() {
 
           {/* Horizontal Evaluation Bar for Mobile */}
           {settings.showEvalBar && (
-            <div className="lg:hidden w-full max-w-[calc(100vh-140px)] shrink-0">
+            <div className="lg:hidden w-full max-w-[min(720px,calc(100vh-100px))] shrink-0">
               <HorizontalEvalBar
                 score={topEval?.cp ?? null}
                 mate={topEval?.mate ?? null}
@@ -445,8 +445,8 @@ export default function AnalysisPage() {
             </div>
           )}
 
-          {/* Strict 1:1 Square Board Container */}
-          <div className="h-[calc(100vh-140px)] w-[calc(100vh-140px)] max-h-[calc(100vh-140px)] max-w-full aspect-square flex items-center justify-center shrink-0 my-0">
+          {/* Expanded Desktop 1:1 Square Board Container (Width & Height up to 720px) */}
+          <div className="h-[min(720px,calc(100vh-100px))] w-[min(720px,calc(100vh-100px))] max-h-[calc(100vh-100px)] max-w-full aspect-square flex items-center justify-center shrink-0 my-0">
             <div className="w-full h-full aspect-square flex shadow-2xl rounded overflow-hidden border border-[#312e2b] bg-[#1d1b18] relative">
               {/* Vertical Eval Bar for Desktop */}
               {settings.showEvalBar && (
@@ -551,7 +551,7 @@ export default function AnalysisPage() {
           </div>
 
           {/* Bottom Player Info (White) */}
-          <div className="w-full max-w-[calc(100vh-140px)] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
+          <div className="w-full max-w-[min(720px,calc(100vh-100px))] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-gray-200 text-black flex items-center justify-center text-xs">👤</div>
               <span>{boardOrientation === "white" ? "White" : "Black"}</span>
@@ -559,7 +559,7 @@ export default function AnalysisPage() {
           </div>
 
           {/* Mobile Bottom Navigation Controls Bar */}
-          <div className="lg:hidden w-full max-w-[calc(100vh-140px)] bg-[#1e1c18] border-t border-[#312e2b] p-2 mt-2 rounded-lg shrink-0">
+          <div className="lg:hidden w-full max-w-[min(720px,calc(100vh-100px))] bg-[#1e1c18] border-t border-[#312e2b] p-2 mt-2 rounded-lg shrink-0">
             <div className="grid grid-cols-4 gap-2">
               <button onClick={goToStart} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
                 <SkipBack className="w-5 h-5" />
