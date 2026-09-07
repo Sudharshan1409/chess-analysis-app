@@ -6,6 +6,7 @@ import { Chess } from "chess.js";
 export interface PVLine {
   cp: number | null;
   mate: number | null;
+  pvUci: string[];
   pvSan: string[];
 }
 
@@ -75,7 +76,6 @@ export function useStockfish() {
 
     workerRef.current.postMessage("stop");
     setIsAnalyzing(true);
-    // Retain previous lines and depth instead of resetting to 0 to prevent UI flicker
     workerRef.current.postMessage(`position fen ${fen}`);
     workerRef.current.postMessage(`go depth ${depth}`);
   }, []);
@@ -114,27 +114,30 @@ function parseStockfishOutput(
   const mateMatch = line.match(/\bscore mate (-?\d+)/);
   if (mateMatch) mate = parseInt(mateMatch[1], 10);
 
+  let pvUci: string[] = [];
   let pvSan: string[] = [];
   const pvIndex = line.indexOf(" pv ");
-  if (pvIndex !== -1 && fen) {
-    const rawPv = line.substring(pvIndex + 4).trim().split(/\s+/);
-    try {
-      const chess = new Chess(fen);
-      for (const uci of rawPv) {
-        if (uci.length >= 4) {
-          const from = uci.substring(0, 2);
-          const to = uci.substring(2, 4);
-          const promotion = uci.length > 4 ? uci.substring(4, 5) : undefined;
-          const move = chess.move({ from, to, promotion });
-          if (move) {
-            pvSan.push(move.san);
-          } else {
-            break;
+  if (pvIndex !== -1) {
+    pvUci = line.substring(pvIndex + 4).trim().split(/\s+/);
+    if (fen && pvUci.length > 0) {
+      try {
+        const chess = new Chess(fen);
+        for (const uci of pvUci) {
+          if (uci.length >= 4) {
+            const from = uci.substring(0, 2);
+            const to = uci.substring(2, 4);
+            const promotion = uci.length > 4 ? uci.substring(4, 5) : undefined;
+            const move = chess.move({ from, to, promotion });
+            if (move) {
+              pvSan.push(move.san);
+            } else {
+              break;
+            }
           }
         }
+      } catch (e) {
+        // ignore
       }
-    } catch (e) {
-      // ignore
     }
   }
 
@@ -149,6 +152,7 @@ function parseStockfishOutput(
     line: {
       cp,
       mate,
+      pvUci,
       pvSan,
     },
   };

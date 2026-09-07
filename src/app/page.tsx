@@ -27,7 +27,7 @@ export default function AnalysisPage() {
   const [history, setHistory] = useState<AnalyzedMove[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   const [boardOrientation, setBoardOrientation] = useState<"white" | "black">("white");
-  const [arrows, setArrows] = useState<[Square, Square, string?][]>([]);
+  const [arrows, setArrows] = useState<{ from: Square; to: Square }[]>([]);
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -95,22 +95,20 @@ export default function AnalysisPage() {
     }
   }, [currentMoveIndex, isReady, getCurrentFen, analyzePosition]);
 
-  // Update engine arrows (Cyan best move arrow matching Chess.com)
+  // Update SVG arrows directly from top line's UCI move ("e2e4")
   useEffect(() => {
-    if (evalData.lines.length > 0 && evalData.lines[0]?.pvSan?.length > 0) {
-      const bestMoveSan = evalData.lines[0].pvSan[0];
-      const activeChess = getActiveChess();
-      const moves = activeChess.moves({ verbose: true });
-      const foundMove = moves.find((m) => m.san === bestMoveSan);
-      if (foundMove) {
-        setArrows([[foundMove.from as Square, foundMove.to as Square, "rgba(56, 189, 248, 0.95)"]]);
-      } else {
-        setArrows([]);
+    const topPV = evalData.lines[0]?.pvUci;
+    if (topPV && topPV.length > 0) {
+      const bestUci = topPV[0];
+      if (bestUci && bestUci.length >= 4) {
+        const from = bestUci.substring(0, 2) as Square;
+        const to = bestUci.substring(2, 4) as Square;
+        setArrows([{ from, to }]);
+        return;
       }
-    } else {
-      setArrows([]);
     }
-  }, [evalData.lines, getActiveChess]);
+    setArrows([]);
+  }, [evalData.lines]);
 
   // Make move
   const makeMove = (from: Square, to: Square) => {
@@ -285,6 +283,20 @@ export default function AnalysisPage() {
   const displayRanks = boardOrientation === "white" ? ranks : [...ranks].reverse();
   const displayFiles = boardOrientation === "white" ? files : [...files].reverse();
 
+  // Helper to convert rank/file to board percentage coordinates for SVG arrow drawing
+  const getSquareCenterCoords = (sq: Square) => {
+    const file = sq[0];
+    const rank = sq[1];
+    const fIndex = displayFiles.indexOf(file);
+    const rIndex = displayRanks.indexOf(rank);
+
+    if (fIndex === -1 || rIndex === -1) return { x: 0, y: 0 };
+    // Each square is 12.5% x 12.5% (100 / 8)
+    const x = fIndex * 12.5 + 6.25;
+    const y = rIndex * 12.5 + 6.25;
+    return { x, y };
+  };
+
   return (
     <div className="min-h-screen lg:h-screen w-screen bg-[#21201d] text-gray-200 flex flex-col lg:flex-row font-sans select-none overflow-x-hidden lg:overflow-hidden">
       {/* 1. Left Chess.com Navigation Bar (Desktop) */}
@@ -337,7 +349,7 @@ export default function AnalysisPage() {
 
       {/* 2. Main Workspace (Full Viewport Height Layout) */}
       <div className="flex-1 h-full flex flex-col lg:flex-row p-2 lg:p-4 gap-4 items-center lg:items-stretch justify-between overflow-y-auto lg:overflow-hidden">
-        {/* Center Main Board Area - Expands vertically to fill ~calc(100vh - 40px) */}
+        {/* Center Main Board Area */}
         <div className="flex-1 h-full flex flex-col items-center justify-between min-w-0">
           {/* Top Player Info (Black) */}
           <div className="w-full flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
@@ -351,9 +363,9 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Large Square Board Area - Maximize Viewport Height */}
+          {/* Large Square Board Area */}
           <div className="flex-1 w-full flex items-center justify-center min-h-0 py-1">
-            <div className="h-full aspect-square max-w-full flex shadow-2xl rounded overflow-hidden border border-[#312e2b] bg-[#1d1b18]">
+            <div className="h-full aspect-square max-w-full flex shadow-2xl rounded overflow-hidden border border-[#312e2b] bg-[#1d1b18] relative">
               <EvalBar
                 score={topEval?.cp ?? null}
                 mate={topEval?.mate ?? null}
@@ -416,6 +428,40 @@ export default function AnalysisPage() {
                     );
                   })
                 )}
+
+                {/* SVG Overlay for Best Move Arrows */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
+                  <defs>
+                    <marker
+                      id="arrowhead-cyan"
+                      markerWidth="6"
+                      markerHeight="6"
+                      refX="5"
+                      refY="3"
+                      orient="auto"
+                    >
+                      <polygon points="0 0, 6 3, 0 6" fill="rgba(56, 189, 248, 0.95)" />
+                    </marker>
+                  </defs>
+
+                  {arrows.map((arr, idx) => {
+                    const start = getSquareCenterCoords(arr.from);
+                    const end = getSquareCenterCoords(arr.to);
+                    return (
+                      <line
+                        key={idx}
+                        x1={`${start.x}%`}
+                        y1={`${start.y}%`}
+                        x2={`${end.x}%`}
+                        y2={`${end.y}%`}
+                        stroke="rgba(56, 189, 248, 0.95)"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        markerEnd="url(#arrowhead-cyan)"
+                      />
+                    );
+                  })}
+                </svg>
               </div>
             </div>
           </div>
@@ -429,7 +475,7 @@ export default function AnalysisPage() {
           </div>
         </div>
 
-        {/* 3. Right Sidebar Container (Fixed 420px Width, Full Viewport Height) */}
+        {/* 3. Right Sidebar Container */}
         <div className="w-full lg:w-[420px] h-full bg-[#262421] border border-[#312e2b] rounded-lg shadow-2xl flex flex-col shrink-0 overflow-hidden">
           {/* Top Analysis Header */}
           <div className="bg-[#1e1c18] px-4 py-3 border-b border-[#312e2b] flex items-center justify-between shrink-0">
@@ -484,7 +530,7 @@ export default function AnalysisPage() {
             />
           </div>
 
-          {/* Bottom Bar: Navigation Controls + Flip Board (Chess.com Style) */}
+          {/* Bottom Bar: Navigation Controls + Flip Board */}
           <div className="bg-[#1e1c18] border-t border-[#312e2b] p-3 flex flex-col gap-2 shrink-0">
             <div className="grid grid-cols-4 gap-2">
               <button
