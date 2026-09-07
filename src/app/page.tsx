@@ -408,7 +408,7 @@ export default function AnalysisPage() {
               isAnalyzing={isAnalyzing}
             />
 
-            <div className="flex-1 h-full relative">
+            <div className="flex-1 h-full relative border-none outline-none">
               <Chessboard
                 options={{
                   position: getCurrentFen(),
@@ -433,7 +433,8 @@ export default function AnalysisPage() {
                   allowDragging: true,
                   boardStyle: {
                     borderRadius: "0px",
-                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.5)",
+                    border: "none",
+                    outline: "none",
                   },
                   darkSquareStyle: { backgroundColor: "#769656" },
                   lightSquareStyle: { backgroundColor: "#eeeed2" },

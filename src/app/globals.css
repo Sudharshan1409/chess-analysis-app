@@ -24,3 +24,14 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Eliminate subpixel rendering gaps on board grid rows */
+svg, img {
+  display: block;
+}
+
+[data-square] {
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
