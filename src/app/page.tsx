@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Chess, Square } from "chess.js";
-import { Chessboard } from "react-chessboard";
 import { useStockfish } from "@/lib/useStockfish";
 import { EvalBar } from "@/components/EvalBar";
 import { MoveList, AnalyzedMove, MoveClassification } from "@/components/MoveList";
@@ -17,34 +16,29 @@ import {
   Upload,
   Cpu,
   Zap,
-  Play,
-  Pause,
-  Award,
-  Sparkles
 } from "lucide-react";
 import confetti from "canvas-confetti";
 
 export default function AnalysisPage() {
   const [game, setGame] = useState(new Chess());
   const [history, setHistory] = useState<AnalyzedMove[]>([]);
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1); // -1 = start pos
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1); // -1 = initial position
   const [boardOrientation, setBoardOrientation] = useState<"white" | "black">("white");
-  const [customArrows, setCustomArrows] = useState<[Square, Square, string?][]>([]);
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
-  const [optionSquares, setOptionSquares] = useState<Record<string, { backgroundColor?: string; borderRadius?: string }>>({});
+  const [validMoves, setValidMoves] = useState<Square[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAutoAnalyzing, setIsAutoAnalyzing] = useState(false);
   const [autoAnalyzeProgress, setAutoAnalyzeProgress] = useState(0);
 
   // Stockfish Engine
-  const { isReady, isAnalyzing, evalData, analyzePosition, stopAnalysis } = useStockfish();
+  const { isReady, isAnalyzing, evalData, analyzePosition } = useStockfish();
 
   // Helper to get FEN at current index
   const getCurrentFen = useCallback(() => {
     if (currentMoveIndex === -1) {
       return history.length > 0 && history[0].fenBefore
         ? history[0].fenBefore
-        : new Chess().fen();
+        : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     }
     return history[currentMoveIndex]?.fen || game.fen();
   }, [currentMoveIndex, history, game]);
@@ -79,50 +73,12 @@ export default function AnalysisPage() {
     }
   }, [evalData, currentMoveIndex]);
 
-  // Update engine arrows
-  useEffect(() => {
-    if (evalData.pv && evalData.pv.length > 0) {
-      const bestUci = evalData.pv[0];
-      if (bestUci.length >= 4) {
-        const from = bestUci.substring(0, 2) as Square;
-        const to = bestUci.substring(2, 4) as Square;
-        setCustomArrows([[from, to, "rgba(0, 191, 255, 0.8)"]]);
-      }
-    } else {
-      setCustomArrows([]);
-    }
-  }, [evalData.pv]);
-
-  // Highlight valid moves when square selected
-  const getMoveOptions = (square: Square) => {
-    const activeChess = getActiveChess();
-    const moves = activeChess.moves({ square, verbose: true });
-    if (moves.length === 0) {
-      setOptionSquares({});
-      return false;
-    }
-
-    const newSquares: Record<string, { backgroundColor?: string; borderRadius?: string }> = {};
-    moves.forEach((move) => {
-      newSquares[move.to] = {
-        backgroundColor: activeChess.get(move.to as Square)
-          ? "rgba(255, 0, 0, 0.4)" // Capture
-          : "rgba(0, 0, 0, 0.2)",  // Normal move dot
-        borderRadius: "50%",
-      };
-    });
-    newSquares[square] = { backgroundColor: "rgba(255, 255, 0, 0.4)" };
-    setOptionSquares(newSquares);
-    return true;
-  };
-
-  // Make move logic
+  // Make move
   const makeMove = (from: Square, to: Square) => {
     const activeChess = getActiveChess();
     try {
       const moveResult = activeChess.move({ from, to, promotion: "q" });
       if (moveResult) {
-        const fenBefore = activeChess.fen(); // or previous fen
         const newHistory = history.slice(0, currentMoveIndex + 1);
         const nextMoveNumber = Math.floor(newHistory.length / 2) + 1;
 
@@ -140,60 +96,53 @@ export default function AnalysisPage() {
         setGame(activeChess);
         setCurrentMoveIndex(updatedHistory.length - 1);
         setSelectedSquare(null);
-        setOptionSquares({});
+        setValidMoves([]);
         return true;
       }
     } catch (e) {
       // Invalid move
     }
     setSelectedSquare(null);
-    setOptionSquares({});
+    setValidMoves([]);
     return false;
   };
 
-  // Click square handler (Click-to-move support)
-  const onSquareClick = ({ square }: { square: Square }) => {
+  // Square Click
+  const handleSquareClick = (sq: Square) => {
+    const activeChess = getActiveChess();
+    const piece = activeChess.get(sq);
+
     if (!selectedSquare) {
-      const activeChess = getActiveChess();
-      const piece = activeChess.get(square);
       if (piece && piece.color === activeChess.turn()) {
-        setSelectedSquare(square);
-        getMoveOptions(square);
+        setSelectedSquare(sq);
+        const moves = activeChess.moves({ square: sq, verbose: true });
+        setValidMoves(moves.map((m) => m.to as Square));
       }
     } else {
-      if (selectedSquare === square) {
+      if (selectedSquare === sq) {
         setSelectedSquare(null);
-        setOptionSquares({});
+        setValidMoves([]);
       } else {
-        const moved = makeMove(selectedSquare, square);
+        const moved = makeMove(selectedSquare, sq);
         if (!moved) {
-          const activeChess = getActiveChess();
-          const piece = activeChess.get(square);
           if (piece && piece.color === activeChess.turn()) {
-            setSelectedSquare(square);
-            getMoveOptions(square);
+            setSelectedSquare(sq);
+            const moves = activeChess.moves({ square: sq, verbose: true });
+            setValidMoves(moves.map((m) => m.to as Square));
           } else {
             setSelectedSquare(null);
-            setOptionSquares({});
+            setValidMoves([]);
           }
         }
       }
     }
   };
 
-  // Drag and drop piece handler
-  const onPieceDrop = ({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string }) => {
-    if (sourceSquare && targetSquare) {
-      return makeMove(sourceSquare as Square, targetSquare as Square);
-    }
-    return false;
-  };
-
   // Navigation
-  const goToStart = () => { setCurrentMoveIndex(-1); setSelectedSquare(null); setOptionSquares({}); };
-  const goToPrev = () => { setCurrentMoveIndex((prev) => Math.max(prev - 1, -1)); setSelectedSquare(null); setOptionSquares({}); };
-  const goToNext = () => { setCurrentMoveIndex((prev) => Math.min(prev + 1, history.length - 1)); setSelectedSquare(null); setOptionSquares({}); };
-  const goToEnd = () => { setCurrentMoveIndex(history.length - 1); setSelectedSquare(null); setOptionSquares({}); };
+  const goToStart = () => { setCurrentMoveIndex(-1); setSelectedSquare(null); setValidMoves([]); };
+  const goToPrev = () => { setCurrentMoveIndex((prev) => Math.max(prev - 1, -1)); setSelectedSquare(null); setValidMoves([]); };
+  const goToNext = () => { setCurrentMoveIndex((prev) => Math.min(prev + 1, history.length - 1)); setSelectedSquare(null); setValidMoves([]); };
+  const goToEnd = () => { setCurrentMoveIndex(history.length - 1); setSelectedSquare(null); setValidMoves([]); };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -260,8 +209,25 @@ export default function AnalysisPage() {
     confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
   };
 
-  const currentChess = getActiveChess();
-  const currentTurn = currentChess.turn();
+  const activeChess = getActiveChess();
+  const currentTurn = activeChess.turn();
+
+  // Render 8x8 Board Grid
+  const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
+  const ranks = ["8", "7", "6", "5", "4", "3", "2", "1"];
+
+  const displayRanks = boardOrientation === "white" ? ranks : [...ranks].reverse();
+  const displayFiles = boardOrientation === "white" ? files : [...files].reverse();
+
+  // Map piece codes to unicode chess symbols
+  const getPieceSymbol = (piece: { type: string; color: string } | null) => {
+    if (!piece) return null;
+    const symbols: Record<string, string> = {
+      w_p: "♙", w_r: "♖", w_n: "♘", w_b: "♗", w_q: "♕", w_k: "♔",
+      b_p: "♟", b_r: "♜", b_n: "♞", b_b: "♝", b_q: "♛", b_k: "♚",
+    };
+    return symbols[`${piece.color}_${piece.type}`] || "";
+  };
 
   return (
     <div className="min-h-screen bg-[#1e1c18] text-gray-100 flex flex-col font-sans select-none">
@@ -332,34 +298,59 @@ export default function AnalysisPage() {
               isAnalyzing={isAnalyzing}
             />
 
-            <div className="flex-1 h-full relative">
-              <Chessboard
-                options={{
-                  position: getCurrentFen(),
-                  onPieceDrop: ({ sourceSquare, targetSquare }) => {
-                    if (sourceSquare && targetSquare) {
-                      return onPieceDrop({ sourceSquare, targetSquare });
-                    }
-                    return false;
-                  },
-                  onSquareClick: ({ square }) => {
-                    if (square) {
-                      onSquareClick({ square: square as Square });
-                    }
-                  },
-                  boardOrientation,
-                  boardStyle: { borderRadius: "0px" },
-                  darkSquareStyle: { backgroundColor: "#739552" },
-                  lightSquareStyle: { backgroundColor: "#ebedd0" },
-                  squareStyles: optionSquares,
-                  arrows: customArrows.map(([from, to, color]) => ({
-                    startSquare: from,
-                    endSquare: to,
-                    color: color || "rgba(0, 191, 255, 0.8)",
-                  })),
-                  allowDrawingArrows: true,
-                }}
-              />
+            {/* Custom Interactive Grid Board */}
+            <div className="flex-1 h-full grid grid-cols-8 grid-rows-8 relative bg-[#739552]">
+              {displayRanks.map((r, rIdx) =>
+                displayFiles.map((f, fIdx) => {
+                  const sq = `${f}${r}` as Square;
+                  const isLight = (rIdx + fIdx) % 2 === 0;
+                  const piece = activeChess.get(sq);
+                  const isSelected = selectedSquare === sq;
+                  const isValidTarget = validMoves.includes(sq);
+
+                  return (
+                    <div
+                      key={sq}
+                      onClick={() => handleSquareClick(sq)}
+                      className={`relative flex items-center justify-center cursor-pointer transition-colors ${
+                        isLight ? "bg-[#ebedd0]" : "bg-[#739552]"
+                      } ${isSelected ? "!bg-amber-300/80" : ""}`}
+                    >
+                      {/* Piece Rendering */}
+                      {piece && (
+                        <span
+                          className={`text-3xl sm:text-4xl md:text-5xl font-serif leading-none select-none ${
+                            piece.color === "w" ? "text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]" : "text-black drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]"
+                          }`}
+                        >
+                          {getPieceSymbol(piece)}
+                        </span>
+                      )}
+
+                      {/* Valid Move Indicator */}
+                      {isValidTarget && (
+                        <div
+                          className={`absolute ${
+                            piece ? "inset-0 border-4 border-red-500/60 rounded-full" : "w-3.5 h-3.5 bg-black/25 rounded-full"
+                          }`}
+                        />
+                      )}
+
+                      {/* Rank / File Notation Labels */}
+                      {fIdx === 0 && (
+                        <span className={`absolute top-0.5 left-1 text-[10px] font-bold ${isLight ? "text-[#739552]" : "text-[#ebedd0]"}`}>
+                          {r}
+                        </span>
+                      )}
+                      {rIdx === 7 && (
+                        <span className={`absolute bottom-0.5 right-1 text-[10px] font-bold ${isLight ? "text-[#739552]" : "text-[#ebedd0]"}`}>
+                          {f}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -389,7 +380,7 @@ export default function AnalysisPage() {
                 Flip
               </button>
               <button
-                onClick={() => { setGame(new Chess()); setHistory([]); setCurrentMoveIndex(-1); }}
+                onClick={() => { setGame(new Chess()); setHistory([]); setCurrentMoveIndex(-1); setSelectedSquare(null); setValidMoves([]); }}
                 className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-[#312e2b] rounded transition"
               >
                 <RotateCcw className="w-4 h-4" />
