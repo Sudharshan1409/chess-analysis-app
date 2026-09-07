@@ -35,7 +35,6 @@ export function useStockfish() {
 
       if (line === "uciok" || line === "readyok") {
         setIsReady(true);
-        // Request MultiPV 3 lines like Chess.com
         worker.postMessage("setoption name MultiPV value 3");
       }
 
@@ -48,7 +47,7 @@ export function useStockfish() {
               nextLines[parsed.multipvIndex] = parsed.line;
             }
             return {
-              depth: parsed.depth ?? prev.depth,
+              depth: parsed.depth !== undefined && parsed.depth > prev.depth ? parsed.depth : prev.depth,
               nodes: parsed.nodes ?? prev.nodes,
               nps: parsed.nps ?? prev.nps,
               lines: nextLines,
@@ -76,11 +75,7 @@ export function useStockfish() {
 
     workerRef.current.postMessage("stop");
     setIsAnalyzing(true);
-    setEvalData({
-      depth: 0,
-      lines: [],
-    });
-
+    // Retain previous lines and depth instead of resetting to 0 to prevent UI flicker
     workerRef.current.postMessage(`position fen ${fen}`);
     workerRef.current.postMessage(`go depth ${depth}`);
   }, []);
