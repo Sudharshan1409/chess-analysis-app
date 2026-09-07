@@ -416,7 +416,7 @@ export default function AnalysisPage() {
       {/* 2. Main Workspace */}
       <div className="flex-1 h-full flex flex-col lg:flex-row p-2 lg:p-4 gap-4 items-center lg:items-stretch justify-between overflow-y-auto lg:overflow-hidden">
         {/* Center Main Board Area */}
-        <div className="flex-1 h-full flex flex-col items-center justify-start min-w-0">
+        <div className="flex-1 lg:h-full flex flex-col items-center justify-start min-w-0">
           {/* Top Player Info (Black) */}
           <div className="w-full flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
             <div className="flex items-center gap-2">
@@ -442,8 +442,8 @@ export default function AnalysisPage() {
             </div>
           )}
 
-          {/* Square Board Area - Constrained to 100% width aspect ratio on mobile to prevent layout shift */}
-          <div className="w-full aspect-square max-w-[calc(100vh-200px)] lg:max-w-none flex items-center justify-center shrink-0 my-auto">
+          {/* Square Board Area - Fixed width & aspect ratio to eliminate layout snap */}
+          <div className="w-full aspect-square flex items-center justify-center shrink-0 my-0">
             <div className="w-full h-full aspect-square flex shadow-2xl rounded overflow-hidden border border-[#312e2b] bg-[#1d1b18] relative">
               {/* Vertical Eval Bar for Desktop */}
               {settings.showEvalBar && (
