@@ -17,13 +17,9 @@ import {
   Cpu,
   Search,
   Gamepad2,
-  BookOpen,
   GraduationCap,
   Tv,
-  Users,
-  Settings,
-  MoreHorizontal,
-  FolderOpen
+  Users
 } from "lucide-react";
 
 export default function AnalysisPage() {
@@ -290,7 +286,7 @@ export default function AnalysisPage() {
   const displayFiles = boardOrientation === "white" ? files : [...files].reverse();
 
   return (
-    <div className="min-h-screen bg-[#21201d] text-gray-200 flex flex-col lg:flex-row font-sans select-none">
+    <div className="min-h-screen bg-[#21201d] text-gray-200 flex flex-col lg:flex-row font-sans select-none overflow-x-hidden">
       {/* 1. Left Chess.com Navigation Bar (Desktop) */}
       <aside className="hidden lg:flex w-52 bg-[#1d1b18] border-r border-[#2d2b27] flex-col justify-between p-3 shrink-0">
         <div className="space-y-4">
@@ -339,12 +335,12 @@ export default function AnalysisPage() {
         </button>
       </header>
 
-      {/* 2. Main Workspace (Center Board + Right Sidebar) */}
-      <div className="flex-1 flex flex-col lg:flex-row min-h-screen max-w-[1600px] w-full mx-auto p-2 lg:p-4 gap-4 items-center lg:items-stretch justify-center">
+      {/* 2. Main Workspace (Full Heights & Scaled Board) */}
+      <div className="flex-1 flex flex-col lg:flex-row w-full p-2 lg:p-6 gap-6 items-center lg:items-start justify-center min-h-screen">
         {/* Center Main Board Area */}
-        <div className="flex-1 flex flex-col items-center justify-center max-w-[800px] w-full">
+        <div className="flex-1 flex flex-col items-center justify-start w-full max-w-[1100px]">
           {/* Top Player Info (Black) */}
-          <div className="w-full flex items-center justify-between py-1 px-1 text-xs text-gray-300 font-bold">
+          <div className="w-full max-w-[850px] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold mb-1">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-[#312e2b] flex items-center justify-center text-gray-400 text-xs">👤</div>
               <span>{boardOrientation === "white" ? "Black" : "White"}</span>
@@ -355,8 +351,8 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Board Container with Eval Bar */}
-          <div className="w-full aspect-square max-h-[calc(100vh-140px)] flex shadow-2xl rounded overflow-hidden border border-[#312e2b]">
+          {/* Large Board Container with Left-Attached Eval Bar */}
+          <div className="w-full max-w-[850px] aspect-square flex shadow-2xl rounded overflow-hidden border border-[#312e2b] bg-[#1d1b18]">
             <EvalBar
               score={topEval?.cp ?? null}
               mate={topEval?.mate ?? null}
@@ -400,18 +396,18 @@ export default function AnalysisPage() {
                           className={`absolute ${
                             piece
                               ? "inset-0 border-4 border-red-500/60 rounded-full"
-                              : "w-3.5 h-3.5 bg-black/25 rounded-full"
+                              : "w-4 h-4 bg-black/25 rounded-full"
                           }`}
                         />
                       )}
 
                       {fIdx === 0 && (
-                        <span className="absolute top-0.5 left-1 text-[10px] font-bold text-gray-700/80">
+                        <span className="absolute top-0.5 left-1 text-[11px] font-bold text-gray-700/80">
                           {r}
                         </span>
                       )}
                       {rIdx === 7 && (
-                        <span className="absolute bottom-0.5 right-1 text-[10px] font-bold text-gray-700/80">
+                        <span className="absolute bottom-0.5 right-1 text-[11px] font-bold text-gray-700/80">
                           {f}
                         </span>
                       )}
@@ -423,7 +419,7 @@ export default function AnalysisPage() {
           </div>
 
           {/* Bottom Player Info (White) */}
-          <div className="w-full flex items-center justify-between py-1 px-1 text-xs text-gray-300 font-bold">
+          <div className="w-full max-w-[850px] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold mt-1">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-gray-200 text-black flex items-center justify-center text-xs">👤</div>
               <span>{boardOrientation === "white" ? "White" : "Black"}</span>
@@ -431,8 +427,8 @@ export default function AnalysisPage() {
           </div>
         </div>
 
-        {/* 3. Right Sidebar Container (Tabs + MultiPV Lines + Move History + Bottom Navigation Bar) */}
-        <div className="w-full lg:w-[420px] bg-[#262421] border border-[#312e2b] rounded-lg shadow-xl flex flex-col shrink-0 h-[600px] lg:h-auto lg:max-h-[calc(100vh-40px)] my-auto">
+        {/* 3. Right Sidebar Container (Fixed Width 440px on Desktop) */}
+        <div className="w-full lg:w-[440px] bg-[#262421] border border-[#312e2b] rounded-lg shadow-2xl flex flex-col shrink-0 h-[650px] lg:h-[calc(100vh-60px)]">
           {/* Top Analysis Header */}
           <div className="bg-[#1e1c18] px-4 py-3 border-b border-[#312e2b] flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-bold text-white">
@@ -448,7 +444,7 @@ export default function AnalysisPage() {
           </div>
 
           {/* MultiPV Lines Section (Top 3 Lines) */}
-          <div className="bg-[#1e1c18] border-b border-[#312e2b] p-2 space-y-1">
+          <div className="bg-[#1e1c18] border-b border-[#312e2b] p-2 space-y-1.5">
             {evalData.lines.slice(0, 3).map((line, idx) => {
               const scoreStr =
                 line.mate !== null && line.mate !== undefined
@@ -458,8 +454,8 @@ export default function AnalysisPage() {
                   : "0.00";
 
               return (
-                <div key={idx} className="flex items-center gap-2 text-xs font-mono bg-[#262421] p-1.5 rounded border border-[#312e2b]">
-                  <span className="bg-[#312e2b] text-amber-400 px-1.5 py-0.5 rounded font-extrabold text-[11px] shrink-0">
+                <div key={idx} className="flex items-center gap-2 text-xs font-mono bg-[#262421] p-2 rounded border border-[#312e2b]">
+                  <span className="bg-[#312e2b] text-amber-400 px-2 py-0.5 rounded font-extrabold text-xs shrink-0">
                     {scoreStr}
                   </span>
                   <div className="text-gray-300 truncate">
@@ -487,32 +483,32 @@ export default function AnalysisPage() {
           </div>
 
           {/* Bottom Bar: Navigation Controls + Flip Board (Chess.com Style) */}
-          <div className="bg-[#1e1c18] border-t border-[#312e2b] p-2 flex flex-col gap-2">
+          <div className="bg-[#1e1c18] border-t border-[#312e2b] p-3 flex flex-col gap-2">
             <div className="grid grid-cols-4 gap-2">
               <button
                 onClick={goToStart}
-                className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
+                className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
                 title="First Move"
               >
                 <SkipBack className="w-5 h-5" />
               </button>
               <button
                 onClick={goToPrev}
-                className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
+                className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
                 title="Previous Move"
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
               <button
                 onClick={goToNext}
-                className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
+                className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
                 title="Next Move"
               >
                 <ChevronRight className="w-6 h-6" />
               </button>
               <button
                 onClick={goToEnd}
-                className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
+                className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
                 title="Last Move"
               >
                 <SkipForward className="w-5 h-5" />
@@ -522,9 +518,9 @@ export default function AnalysisPage() {
             <div className="flex items-center justify-between px-1 pt-1 text-xs text-gray-400 font-bold">
               <button
                 onClick={() => setBoardOrientation((prev) => (prev === "white" ? "black" : "white"))}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded border border-[#383531] transition"
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg border border-[#383531] transition"
               >
-                <FlipHorizontal className="w-3.5 h-3.5 text-amber-400" />
+                <FlipHorizontal className="w-4 h-4 text-amber-400" />
                 Flip Board
               </button>
 
@@ -537,9 +533,9 @@ export default function AnalysisPage() {
                   setValidMoves([]);
                   playSound("start");
                 }}
-                className="flex items-center gap-1 px-3 py-1.5 text-gray-400 hover:text-red-400 transition"
+                className="flex items-center gap-1.5 px-3 py-2 text-gray-400 hover:text-red-400 transition"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-4 h-4" />
                 Reset
               </button>
             </div>
