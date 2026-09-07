@@ -72,9 +72,10 @@ export default function AnalysisPage() {
   // Helper to get FEN at current index
   const getCurrentFen = useCallback(() => {
     if (currentMoveIndex === -1) {
-      return history.length > 0 && history[0].fenBefore
-        ? history[0].fenBefore
-        : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+      if (history.length > 0 && history[0].fenBefore) {
+        return history[0].fenBefore;
+      }
+      return game.fen();
     }
     return history[currentMoveIndex]?.fen || game.fen();
   }, [currentMoveIndex, history, game]);
