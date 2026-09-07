@@ -61,29 +61,29 @@ export const EvalBar: React.FC<EvalBarProps> = ({
   const bottomPercent = 100 - topPercent;
 
   return (
-    <div className="relative w-4 h-full bg-[#262421] overflow-hidden flex flex-col justify-between border-r border-[#312e2b] select-none font-bold text-[9px] shrink-0 z-10">
+    <div className="relative w-7 sm:w-8 h-full bg-[#1a1815] overflow-hidden flex flex-col justify-between border-r border-[#312e2b] select-none font-bold text-xs shrink-0 z-30">
       {/* Top Section */}
       <div
-        className="w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-start justify-center pt-1"
+        className="w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-start justify-center pt-1.5"
         style={{
           height: `${topPercent}%`,
-          backgroundColor: topIsWhite ? "#3c3934" : "#1a1815",
-          color: topIsWhite ? "#ffffff" : "#807d78",
+          backgroundColor: topIsWhite ? "#ffffff" : "#262421",
+          color: topIsWhite ? "#262421" : "#989795",
         }}
       >
-        <span>{topPercent > 12 ? evalText : ""}</span>
+        <span>{topPercent > 8 ? evalText : ""}</span>
       </div>
 
       {/* Bottom Section */}
       <div
-        className="w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-end justify-center pb-1"
+        className="w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-end justify-center pb-1.5"
         style={{
           height: `${bottomPercent}%`,
-          backgroundColor: topIsWhite ? "#1a1815" : "#3c3934",
-          color: topIsWhite ? "#807d78" : "#ffffff",
+          backgroundColor: topIsWhite ? "#262421" : "#ffffff",
+          color: topIsWhite ? "#989795" : "#262421",
         }}
       >
-        <span>{bottomPercent > 12 ? evalText : ""}</span>
+        <span>{bottomPercent > 8 ? evalText : ""}</span>
       </div>
 
       {isAnalyzing && (

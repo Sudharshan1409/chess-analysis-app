@@ -37,7 +37,7 @@ export default function AnalysisPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Default assistance settings matching current state
+  // Default assistance settings
   const [settings, setSettings] = useState<SettingsState>({
     showEvalBar: true,
     showSuggestionArrows: true,
@@ -418,10 +418,10 @@ export default function AnalysisPage() {
 
       {/* 2. Main Workspace */}
       <div className="flex-1 h-full flex flex-col lg:flex-row p-2 lg:p-4 gap-4 items-center justify-center overflow-y-auto lg:overflow-hidden">
-        {/* Center Main Board Area (Fully stretched height on Desktop, 1:1 Aspect Ratio) */}
+        {/* Center Main Board Area */}
         <div className="w-full lg:flex-1 lg:h-full flex flex-col items-center justify-between min-w-0">
-          {/* Top Player Info (Black) */}
-          <div className="w-full lg:w-auto lg:min-w-[760px] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
+          {/* Top Player Info & Engine Depth Alignment (Strictly matched to Desktop Board width lg:w-[min(740px,calc(100vh-140px))]) */}
+          <div className="w-full lg:w-[min(740px,calc(100vh-140px))] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-[#312e2b] flex items-center justify-center text-gray-400 text-xs">👤</div>
               <span>{boardOrientation === "white" ? "Black" : "White"}</span>
@@ -445,10 +445,10 @@ export default function AnalysisPage() {
             </div>
           )}
 
-          {/* Fully Stretched Viewport Square Board Container on Desktop (lg:h-[calc(100vh-80px)]) */}
-          <div className="w-full lg:w-auto lg:h-[calc(100vh-80px)] aspect-square flex items-center justify-center shrink-0 my-0">
+          {/* Scaled Desktop Board Container (~740px Square) */}
+          <div className="w-full lg:w-[min(740px,calc(100vh-140px))] lg:h-[min(740px,calc(100vh-140px))] aspect-square flex items-center justify-center shrink-0 my-0">
             <div className="w-full h-full aspect-square flex shadow-2xl rounded overflow-hidden border border-[#312e2b] bg-[#1d1b18] relative">
-              {/* Vertical Eval Bar for Desktop */}
+              {/* Vertical Eval Bar for Desktop (Clean w-7 width) */}
               {settings.showEvalBar && (
                 <div className="hidden lg:block h-full">
                   <EvalBar
@@ -550,8 +550,8 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Bottom Player Info (White) */}
-          <div className="w-full lg:w-auto lg:min-w-[760px] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
+          {/* Bottom Player Info (White) - Aligned strictly with board width lg:w-[min(740px,calc(100vh-140px))] */}
+          <div className="w-full lg:w-[min(740px,calc(100vh-140px))] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-gray-200 text-black flex items-center justify-center text-xs">👤</div>
               <span>{boardOrientation === "white" ? "White" : "Black"}</span>
@@ -653,7 +653,7 @@ export default function AnalysisPage() {
               <button onClick={goToNext} className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold transition border border-[#383531]">
                 <ChevronRight className="w-6 h-6" />
               </button>
-              <button onClick={goToEnd} className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold transition border border-[#383531]">
+              <button onClick={goToEnd} className="py-3 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
                 <SkipForward className="w-5 h-5" />
               </button>
             </div>
