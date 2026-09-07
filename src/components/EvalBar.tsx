@@ -3,8 +3,9 @@
 import React from "react";
 
 interface EvalBarProps {
-  score: number | null; // Centipawns from White's perspective
-  mate: number | null;  // Mate in N from White's perspective
+  score: number | null; // Centipawns relative to side to move
+  mate: number | null;  // Mate in N
+  turn?: "w" | "b";
   orientation?: "white" | "black";
   isAnalyzing?: boolean;
 }
@@ -12,70 +13,72 @@ interface EvalBarProps {
 export const EvalBar: React.FC<EvalBarProps> = ({
   score,
   mate,
+  turn = "w",
   orientation = "white",
   isAnalyzing = false,
 }) => {
-  // Normalize score/mate so White winning is + and Black winning is -
+  // Convert relative score/mate to absolute White perspective
+  let absoluteScore = score;
+  let absoluteMate = mate;
+
+  if (turn === "b") {
+    if (absoluteScore !== null) absoluteScore = -absoluteScore;
+    if (absoluteMate !== null) absoluteMate = -absoluteMate;
+  }
+
   let evalText = "0.0";
   let whitePercent = 50;
 
-  if (mate !== null) {
-    if (mate > 0) {
-      evalText = `M${mate}`;
+  if (absoluteMate !== null) {
+    if (absoluteMate > 0) {
+      evalText = `M${absoluteMate}`;
       whitePercent = 100;
-    } else if (mate < 0) {
-      evalText = `M${Math.abs(mate)}`;
+    } else if (absoluteMate < 0) {
+      evalText = `M${Math.abs(absoluteMate)}`;
       whitePercent = 0;
     } else {
-      evalText = "#0";
+      evalText = "M0";
       whitePercent = 50;
     }
-  } else if (score !== null) {
-    const cp = score / 100;
+  } else if (absoluteScore !== null) {
+    const cp = absoluteScore / 100;
     evalText = cp > 0 ? `+${cp.toFixed(1)}` : cp.toFixed(1);
     
-    // Sigmoid curve formula for dynamic eval bar height (Chess.com style)
-    // winning by 5+ pawns maxes out visually near ~95%
+    // Chess.com style winning probability formula
     const winningProb = 1 / (1 + Math.pow(10, -cp / 4));
-    whitePercent = Math.min(Math.max(winningProb * 100, 3), 97);
+    whitePercent = Math.min(Math.max(winningProb * 100, 2), 98);
   }
 
-  // Display value calculation depending on board orientation
-  const topText = orientation === "white" 
-    ? (whitePercent < 50 ? evalText : "") 
-    : (whitePercent >= 50 ? evalText : "");
-
-  const bottomText = orientation === "white" 
-    ? (whitePercent >= 50 ? evalText : "") 
-    : (whitePercent < 50 ? evalText : "");
+  const topIsWhite = orientation === "black";
+  const topPercent = topIsWhite ? whitePercent : 100 - whitePercent;
+  const bottomPercent = 100 - topPercent;
 
   return (
-    <div className="relative w-8 h-full bg-[#262421] rounded-l-md overflow-hidden flex flex-col justify-between border-r border-[#312e2b] select-none font-semibold text-xs shadow-inner">
+    <div className="relative w-6 sm:w-7 h-full bg-[#262421] rounded-l overflow-hidden flex flex-col justify-between border-r border-[#312e2b] select-none font-bold text-[11px]">
       {/* Top Section */}
       <div
-        className="w-full transition-all duration-300 ease-out flex items-start justify-center pt-1 text-xs z-10"
+        className="w-full transition-all duration-300 ease-out flex items-start justify-center pt-1"
         style={{
-          height: orientation === "white" ? `${100 - whitePercent}%` : `${whitePercent}%`,
-          backgroundColor: orientation === "white" ? "#262421" : "#ffffff",
-          color: orientation === "white" ? "#989795" : "#262421",
+          height: `${topPercent}%`,
+          backgroundColor: topIsWhite ? "#ffffff" : "#262421",
+          color: topIsWhite ? "#262421" : "#989795",
         }}
       >
-        <span>{topText}</span>
+        <span>{topPercent > 12 ? evalText : ""}</span>
       </div>
 
       {/* Bottom Section */}
       <div
-        className="w-full transition-all duration-300 ease-out flex items-end justify-center pb-1 text-xs z-10"
+        className="w-full transition-all duration-300 ease-out flex items-end justify-center pb-1"
         style={{
-          height: orientation === "white" ? `${whitePercent}%` : `${100 - whitePercent}%`,
-          backgroundColor: orientation === "white" ? "#ffffff" : "#262421",
-          color: orientation === "white" ? "#262421" : "#989795",
+          height: `${bottomPercent}%`,
+          backgroundColor: topIsWhite ? "#262421" : "#ffffff",
+          color: topIsWhite ? "#989795" : "#262421",
         }}
       >
-        <span>{bottomText}</span>
+        <span>{bottomPercent > 12 ? evalText : ""}</span>
       </div>
 
-      {/* Pulsing indicator when evaluating */}
       {isAnalyzing && (
         <div className="absolute inset-x-0 bottom-0 h-1 bg-emerald-500 animate-pulse" />
       )}

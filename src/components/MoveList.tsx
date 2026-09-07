@@ -10,6 +10,7 @@ export interface AnalyzedMove {
   san: string;
   uci: string;
   fen: string;
+  fenBefore?: string;
   classification?: MoveClassification;
   evalScore?: number | null; // Centipawns
   evalMate?: number | null;

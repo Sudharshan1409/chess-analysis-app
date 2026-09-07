@@ -1,21 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { Chess } from "chess.js";
 
 export interface EngineEval {
-  score: number | null; // Centipawns relative to side to move (or converted to white perspective)
+  score: number | null; // Centipawns relative to side to move
   mate: number | null;  // Moves to mate
   depth: number;
   pv: string[];         // Best move sequence in UCI format e.g. ["e2e4", "e7e5"]
+  pvSan: string[];      // Best move sequence converted to SAN notation e.g. ["e4", "e5", "Nf3"]
   bestMove: string | null;
   bestMoveSan?: string;
-  pvSan?: string[];
   nodes?: number;
   nps?: number;
 }
 
 export function useStockfish() {
   const workerRef = useRef<Worker | null>(null);
+  const currentFenRef = useRef<string>("");
   const [isReady, setIsReady] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [evalData, setEvalData] = useState<EngineEval>({
@@ -23,13 +25,11 @@ export function useStockfish() {
     mate: null,
     depth: 0,
     pv: [],
+    pvSan: [],
     bestMove: null,
   });
 
-  const onEvalUpdateRef = useRef<((evalData: EngineEval) => void) | null>(null);
-
   useEffect(() => {
-    // Create stockfish worker from public JS file
     const worker = new Worker("/stockfish/stockfish-18-lite-single.js");
     workerRef.current = worker;
 
@@ -41,15 +41,9 @@ export function useStockfish() {
       }
 
       if (line.startsWith("info depth")) {
-        const parsed = parseStockfishOutput(line);
+        const parsed = parseStockfishOutput(line, currentFenRef.current);
         if (parsed) {
-          setEvalData((prev) => {
-            const nextData = { ...prev, ...parsed };
-            if (onEvalUpdateRef.current) {
-              onEvalUpdateRef.current(nextData);
-            }
-            return nextData;
-          });
+          setEvalData((prev) => ({ ...prev, ...parsed }));
         }
       }
 
@@ -69,10 +63,10 @@ export function useStockfish() {
     };
   }, []);
 
-  const analyzePosition = useCallback((fen: string, depth: number = 20) => {
+  const analyzePosition = useCallback((fen: string, depth: number = 18) => {
     if (!workerRef.current) return;
+    currentFenRef.current = fen;
     
-    // Stop previous analysis
     workerRef.current.postMessage("stop");
     setIsAnalyzing(true);
     setEvalData({
@@ -80,6 +74,7 @@ export function useStockfish() {
       mate: null,
       depth: 0,
       pv: [],
+      pvSan: [],
       bestMove: null,
     });
 
@@ -99,13 +94,10 @@ export function useStockfish() {
     evalData,
     analyzePosition,
     stopAnalysis,
-    setOnEvalUpdate: (fn: (evalData: EngineEval) => void) => {
-      onEvalUpdateRef.current = fn;
-    }
   };
 }
 
-function parseStockfishOutput(line: string): Partial<EngineEval> | null {
+function parseStockfishOutput(line: string, fen: string): Partial<EngineEval> | null {
   const depthMatch = line.match(/\bdepth (\d+)/);
   if (!depthMatch) return null;
 
@@ -125,9 +117,32 @@ function parseStockfishOutput(line: string): Partial<EngineEval> | null {
   }
 
   let pv: string[] = [];
+  let pvSan: string[] = [];
   const pvIndex = line.indexOf(" pv ");
   if (pvIndex !== -1) {
     pv = line.substring(pvIndex + 4).trim().split(/\s+/);
+    
+    // Convert UCI PV moves to SAN moves using chess.js
+    if (fen && pv.length > 0) {
+      try {
+        const chess = new Chess(fen);
+        for (const uci of pv) {
+          if (uci.length >= 4) {
+            const from = uci.substring(0, 2);
+            const to = uci.substring(2, 4);
+            const promotion = uci.length > 4 ? uci.substring(4, 5) : undefined;
+            const move = chess.move({ from, to, promotion });
+            if (move) {
+              pvSan.push(move.san);
+            } else {
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        // Fallback
+      }
+    }
   }
 
   const nodesMatch = line.match(/\bnodes (\d+)/);
@@ -138,6 +153,7 @@ function parseStockfishOutput(line: string): Partial<EngineEval> | null {
     score,
     mate,
     pv,
+    pvSan,
     nodes: nodesMatch ? parseInt(nodesMatch[1], 10) : undefined,
     nps: npsMatch ? parseInt(npsMatch[1], 10) : undefined,
   };
