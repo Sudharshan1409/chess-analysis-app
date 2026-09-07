@@ -458,42 +458,46 @@ export default function AnalysisPage() {
           </div>
 
           {/* Navigation Control Toolbar */}
-          <div className="w-full max-w-[560px] bg-[#262421] border border-[#312e2b] rounded-lg mt-2.5 p-2 flex items-center justify-between shadow">
-            <div className="flex items-center gap-1">
+          <div className="w-full max-w-[560px] bg-[#262421] border border-[#312e2b] rounded-lg mt-2.5 p-2.5 sm:p-3 flex items-center justify-between shadow">
+            <div className="flex items-center gap-2 sm:gap-4 flex-1">
               <button
                 onClick={goToStart}
-                className="p-2 text-gray-400 hover:text-white hover:bg-[#312e2b] rounded transition"
+                className="p-2.5 sm:p-3 text-gray-300 hover:text-white hover:bg-[#312e2b] bg-[#1e1c18] border border-[#3c3934] rounded-lg transition active:scale-95 flex items-center justify-center"
+                title="Start Position (Up Arrow)"
               >
-                <SkipBack className="w-4 h-4" />
+                <SkipBack className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
               <button
                 onClick={goToPrev}
-                className="p-2 text-gray-400 hover:text-white hover:bg-[#312e2b] rounded transition"
+                className="p-2.5 sm:p-3 text-gray-300 hover:text-white hover:bg-[#312e2b] bg-[#1e1c18] border border-[#3c3934] rounded-lg transition active:scale-95 flex-1 flex items-center justify-center"
+                title="Previous Move (Left Arrow)"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
               </button>
               <button
                 onClick={goToNext}
-                className="p-2 text-gray-400 hover:text-white hover:bg-[#312e2b] rounded transition"
+                className="p-2.5 sm:p-3 text-gray-300 hover:text-white hover:bg-[#312e2b] bg-[#1e1c18] border border-[#3c3934] rounded-lg transition active:scale-95 flex-1 flex items-center justify-center"
+                title="Next Move (Right Arrow)"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
               </button>
               <button
                 onClick={goToEnd}
-                className="p-2 text-gray-400 hover:text-white hover:bg-[#312e2b] rounded transition"
+                className="p-2.5 sm:p-3 text-gray-300 hover:text-white hover:bg-[#312e2b] bg-[#1e1c18] border border-[#3c3934] rounded-lg transition active:scale-95 flex items-center justify-center"
+                title="Latest Move (Down Arrow)"
               >
-                <SkipForward className="w-4 h-4" />
+                <SkipForward className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-3">
               <button
                 onClick={() =>
                   setBoardOrientation((prev) => (prev === "white" ? "black" : "white"))
                 }
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-[#312e2b] hover:bg-[#3d3a36] text-xs font-bold rounded text-gray-300 transition"
+                className="flex items-center gap-1.5 px-3 py-2.5 bg-[#312e2b] hover:bg-[#3d3a36] text-xs sm:text-sm font-bold rounded-lg text-gray-300 transition active:scale-95 border border-[#423f3b]"
               >
-                <FlipHorizontal className="w-3.5 h-3.5 text-amber-400" />
+                <FlipHorizontal className="w-4 h-4 text-amber-400" />
                 Flip
               </button>
               <button
@@ -504,9 +508,10 @@ export default function AnalysisPage() {
                   setOptionSquares({});
                   playSound("start");
                 }}
-                className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-[#312e2b] rounded transition"
+                className="p-2.5 text-gray-400 hover:text-red-400 hover:bg-[#312e2b] bg-[#1e1c18] border border-[#3c3934] rounded-lg transition active:scale-95"
+                title="Reset Board"
               >
-                <RotateCcw className="w-4 h-4" />
+                <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
           </div>
