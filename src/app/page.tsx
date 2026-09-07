@@ -103,19 +103,12 @@ export default function AnalysisPage() {
       if (bestUci && bestUci.length >= 4) {
         const from = bestUci.substring(0, 2) as Square;
         const to = bestUci.substring(2, 4) as Square;
-
-        // Verify move is valid on current position before drawing arrow
-        const activeChess = getActiveChess();
-        const moves = activeChess.moves({ verbose: true });
-        const isValid = moves.some((m) => m.from === from && m.to === to);
-        if (isValid) {
-          setArrows([{ from, to }]);
-          return;
-        }
+        setArrows([{ from, to }]);
+        return;
       }
     }
     setArrows([]);
-  }, [evalData.lines, getActiveChess]);
+  }, [evalData.lines]);
 
   // Make move
   const makeMove = (from: Square, to: Square) => {
@@ -298,7 +291,6 @@ export default function AnalysisPage() {
     const rIndex = displayRanks.indexOf(rank);
 
     if (fIndex === -1 || rIndex === -1) return { x: 0, y: 0 };
-    // Each square is 12.5% x 12.5% (100 / 8)
     const x = fIndex * 12.5 + 6.25;
     const y = rIndex * 12.5 + 6.25;
     return { x, y };
@@ -354,7 +346,7 @@ export default function AnalysisPage() {
         </button>
       </header>
 
-      {/* 2. Main Workspace (Full Viewport Height Layout) */}
+      {/* 2. Main Workspace */}
       <div className="flex-1 h-full flex flex-col lg:flex-row p-2 lg:p-4 gap-4 items-center lg:items-stretch justify-between overflow-y-auto lg:overflow-hidden">
         {/* Center Main Board Area */}
         <div className="flex-1 h-full flex flex-col items-center justify-between min-w-0">
@@ -370,7 +362,7 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Large Square Board Area */}
+          {/* Square Board Area */}
           <div className="flex-1 w-full flex items-center justify-center min-h-0 py-1">
             <div className="h-full aspect-square max-w-full flex shadow-2xl rounded overflow-hidden border border-[#312e2b] bg-[#1d1b18] relative">
               <EvalBar
@@ -480,6 +472,36 @@ export default function AnalysisPage() {
               <span>{boardOrientation === "white" ? "White" : "Black"}</span>
             </div>
           </div>
+
+          {/* Mobile Bottom Navigation Controls Bar (Directly below White player info so no scrolling required) */}
+          <div className="lg:hidden w-full bg-[#1e1c18] border-t border-[#312e2b] p-2 mt-2 rounded-lg shrink-0">
+            <div className="grid grid-cols-4 gap-2">
+              <button
+                onClick={goToStart}
+                className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]"
+              >
+                <SkipBack className="w-5 h-5" />
+              </button>
+              <button
+                onClick={goToPrev}
+                className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                onClick={goToNext}
+                className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+              <button
+                onClick={goToEnd}
+                className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]"
+              >
+                <SkipForward className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* 3. Right Sidebar Container */}
@@ -537,8 +559,8 @@ export default function AnalysisPage() {
             />
           </div>
 
-          {/* Bottom Bar: Navigation Controls + Flip Board */}
-          <div className="bg-[#1e1c18] border-t border-[#312e2b] p-3 flex flex-col gap-2 shrink-0">
+          {/* Desktop Bottom Bar: Navigation Controls + Flip Board */}
+          <div className="hidden lg:flex bg-[#1e1c18] border-t border-[#312e2b] p-3 flex-col gap-2 shrink-0">
             <div className="grid grid-cols-4 gap-2">
               <button
                 onClick={goToStart}

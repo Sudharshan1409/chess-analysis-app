@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useEffect } from "react";
 
 interface EvalBarProps {
   score: number | null; // Centipawns relative to side to move
@@ -17,8 +17,18 @@ export const EvalBar: React.FC<EvalBarProps> = ({
   orientation = "white",
   isAnalyzing = false,
 }) => {
-  let absoluteScore = score;
-  let absoluteMate = mate;
+  // Retain last known score/mate so the bar doesn't jump to 50% (middle) during transitions
+  const lastScoreRef = useRef<number | null>(0);
+  const lastMateRef = useRef<number | null>(null);
+
+  if (score !== null) lastScoreRef.current = score;
+  if (mate !== null) lastMateRef.current = mate;
+
+  const currentScore = score ?? lastScoreRef.current;
+  const currentMate = mate ?? lastMateRef.current;
+
+  let absoluteScore = currentScore;
+  let absoluteMate = currentMate;
 
   if (turn === "b") {
     if (absoluteScore !== null) absoluteScore = -absoluteScore;
@@ -43,6 +53,7 @@ export const EvalBar: React.FC<EvalBarProps> = ({
     const cp = absoluteScore / 100;
     evalText = cp > 0 ? `+${cp.toFixed(1)}` : cp.toFixed(1);
 
+    // Chess.com style winning probability formula
     const winningProb = 1 / (1 + Math.pow(10, -cp / 4));
     whitePercent = Math.min(Math.max(winningProb * 100, 2), 98);
   }
@@ -53,9 +64,9 @@ export const EvalBar: React.FC<EvalBarProps> = ({
 
   return (
     <div className="relative w-5 sm:w-6 h-full bg-[#262421] overflow-hidden flex flex-col justify-between border-r border-[#312e2b] select-none font-bold text-[10px]">
-      {/* Top Section */}
+      {/* Top Section with smooth 500ms cubic-bezier transition */}
       <div
-        className="w-full transition-all duration-300 ease-out flex items-start justify-center pt-1"
+        className="w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-start justify-center pt-1"
         style={{
           height: `${topPercent}%`,
           backgroundColor: topIsWhite ? "#ffffff" : "#262421",
@@ -65,9 +76,9 @@ export const EvalBar: React.FC<EvalBarProps> = ({
         <span>{topPercent > 10 ? evalText : ""}</span>
       </div>
 
-      {/* Bottom Section */}
+      {/* Bottom Section with smooth 500ms cubic-bezier transition */}
       <div
-        className="w-full transition-all duration-300 ease-out flex items-end justify-center pb-1"
+        className="w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-end justify-center pb-1"
         style={{
           height: `${bottomPercent}%`,
           backgroundColor: topIsWhite ? "#262421" : "#ffffff",
