@@ -358,6 +358,9 @@ export default function AnalysisPage() {
     return { x, y };
   };
 
+  // Safe MultiPV lines slice (always 3 lines with fallback skeletons to prevent layout jump)
+  const displayLines = [0, 1, 2].map((i) => evalData.lines[i] || null);
+
   return (
     <div className="min-h-screen lg:h-screen w-screen bg-[#21201d] text-gray-200 flex flex-col lg:flex-row font-sans select-none overflow-x-hidden lg:overflow-hidden">
       {/* 1. Left Chess.com Navigation Bar (Desktop) */}
@@ -415,8 +418,8 @@ export default function AnalysisPage() {
 
       {/* 2. Main Workspace */}
       <div className="flex-1 h-full flex flex-col lg:flex-row p-2 lg:p-4 gap-4 items-center lg:items-stretch justify-between overflow-y-auto lg:overflow-hidden">
-        {/* Center Main Board Area */}
-        <div className="flex-1 lg:h-full flex flex-col items-center justify-start min-w-0">
+        {/* Center Main Board Area (Capped max-h to prevent desktop overflow) */}
+        <div className="flex-1 h-full max-h-[calc(100vh-2rem)] flex flex-col items-center justify-between min-w-0">
           {/* Top Player Info (Black) */}
           <div className="w-full flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
             <div className="flex items-center gap-2">
@@ -442,8 +445,8 @@ export default function AnalysisPage() {
             </div>
           )}
 
-          {/* Square Board Area - Fixed width & aspect ratio to eliminate layout snap */}
-          <div className="w-full aspect-square flex items-center justify-center shrink-0 my-0">
+          {/* Square Board Area - Constrained to 100% viewport height bounds */}
+          <div className="flex-1 w-full max-h-[calc(100vh-120px)] aspect-square flex items-center justify-center shrink-0 my-0 overflow-hidden">
             <div className="w-full h-full aspect-square flex shadow-2xl rounded overflow-hidden border border-[#312e2b] bg-[#1d1b18] relative">
               {/* Vertical Eval Bar for Desktop */}
               {settings.showEvalBar && (
@@ -597,24 +600,24 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Conditional MultiPV Engine Lines */}
+          {/* Fixed-Height MultiPV Engine Lines Box (Prevents layout jump on refresh) */}
           {settings.showEngineLines && (
-            <div className="bg-[#1e1c18] border-b border-[#312e2b] p-2 space-y-1.5 shrink-0">
-              {evalData.lines.slice(0, 3).map((line, idx) => {
+            <div className="bg-[#1e1c18] border-b border-[#312e2b] p-2 space-y-1.5 shrink-0 min-h-[128px]">
+              {displayLines.map((line, idx) => {
                 const scoreStr =
-                  line.mate !== null && line.mate !== undefined
+                  line?.mate !== null && line?.mate !== undefined
                     ? `M${line.mate}`
-                    : line.cp !== null && line.cp !== undefined
+                    : line?.cp !== null && line?.cp !== undefined
                     ? `${line.cp > 0 ? "+" : ""}${(line.cp / 100).toFixed(2)}`
                     : "0.00";
 
                 return (
-                  <div key={idx} className="flex items-center gap-2 text-xs font-mono bg-[#262421] p-2 rounded border border-[#312e2b]">
+                  <div key={idx} className="flex items-center gap-2 text-xs font-mono bg-[#262421] p-2 rounded border border-[#312e2b] h-9">
                     <span className="bg-[#312e2b] text-amber-400 px-2 py-0.5 rounded font-extrabold text-xs shrink-0">
                       {scoreStr}
                     </span>
                     <div className="text-gray-300 truncate">
-                      {line.pvSan && line.pvSan.length > 0 ? (
+                      {line?.pvSan && line.pvSan.length > 0 ? (
                         <span>
                           <strong className="text-amber-300 mr-1">1. {line.pvSan[0]}</strong>
                           {line.pvSan.slice(1, 6).join(" ")}

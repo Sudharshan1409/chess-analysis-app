@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef } from "react";
 
 interface EvalBarProps {
   score: number | null; // Centipawns relative to side to move
@@ -17,7 +17,6 @@ export const EvalBar: React.FC<EvalBarProps> = ({
   orientation = "white",
   isAnalyzing = false,
 }) => {
-  // Retain last known score/mate so the bar doesn't jump to 50% (middle) during transitions
   const lastScoreRef = useRef<number | null>(0);
   const lastMateRef = useRef<number | null>(null);
 
@@ -53,7 +52,6 @@ export const EvalBar: React.FC<EvalBarProps> = ({
     const cp = absoluteScore / 100;
     evalText = cp > 0 ? `+${cp.toFixed(1)}` : cp.toFixed(1);
 
-    // Chess.com style winning probability formula
     const winningProb = 1 / (1 + Math.pow(10, -cp / 4));
     whitePercent = Math.min(Math.max(winningProb * 100, 2), 98);
   }
@@ -63,8 +61,8 @@ export const EvalBar: React.FC<EvalBarProps> = ({
   const bottomPercent = 100 - topPercent;
 
   return (
-    <div className="relative w-5 sm:w-6 h-full bg-[#262421] overflow-hidden flex flex-col justify-between border-r border-[#312e2b] select-none font-bold text-[10px]">
-      {/* Top Section with smooth 500ms cubic-bezier transition */}
+    <div className="relative w-5 sm:w-6 h-full bg-[#262421] overflow-hidden flex flex-col justify-between border-r border-[#312e2b] select-none font-bold text-[10px] shrink-0 z-30">
+      {/* Top Section */}
       <div
         className="w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-start justify-center pt-1"
         style={{
@@ -76,7 +74,7 @@ export const EvalBar: React.FC<EvalBarProps> = ({
         <span>{topPercent > 10 ? evalText : ""}</span>
       </div>
 
-      {/* Bottom Section with smooth 500ms cubic-bezier transition */}
+      {/* Bottom Section */}
       <div
         className="w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-end justify-center pb-1"
         style={{
