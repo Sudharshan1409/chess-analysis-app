@@ -1,29 +1,43 @@
-# Chess Analysis App - Stockfish 18 WASM
+# Stockfish 18 Chess Analysis Web Application
 
-An interactive, high-performance Chess Game Analysis Web Application built with **Next.js 15**, **Stockfish 18 (WASM)**, **Chess.js**, **React Chessboard**, and **Tailwind CSS**. Designed following the layout and feel of Chess.com's Analysis Board.
+A modern, high-performance, client-side Chess Analysis Web Application inspired by **Chess.com**'s Analysis Board interface. Built with **Next.js 15 (App Router)**, **TypeScript**, **Tailwind CSS**, and **Stockfish 18 (WASM)**.
 
-![Chess Analysis App Preview](public/stockfish/preview-placeholder.png)
+![Chess Analysis App Preview](public/stockfish/stockfish-18-lite-single.wasm)
 
-## 🌟 Key Features
+## 🌟 Features & Highlights
 
-- ♟️ **Interactive Chessboard**: Smooth drag-and-drop piece moves powered by `react-chessboard` & `chess.js`.
-- ⚡ **Local Stockfish 18 WASM Engine**: Runs Stockfish directly inside an in-browser Web Worker. Zero backend latency, full privacy, and fast multi-threaded/single-threaded WASM analysis.
-- 📊 **Dynamic Evaluation Bar**: Real-time evaluation meter (+ / - score in pawns / mate) with fluid visual transitions matching Chess.com.
-- 🎯 **Best Engine Line (PV) & Arrows**: Live display of top principal variation lines and best-move arrow overlays on the board.
-- 📝 **Move History Tree**: Step through games move-by-move with full keyboard arrow navigation (`←`, `→`, `↑`, `↓`).
-- 📥 **PGN & FEN Importer**: Easily import full master PGNs or custom FEN position strings with instant master game presets (Kasparov, Carlsen).
-- 🔍 **Full Game Review**: One-click game analysis and accuracy classification (Brilliant `!!`, Best `★`, Good `✓`, Inaccuracy `?!`, Mistake `?`, Blunder `??`).
-- 🔄 **Flip Board & Reset**: Switch board perspective between White and Black anytime.
+- ♟️ **Built-in Stockfish 18 WASM Engine**: Stockfish 18 compiled to WebAssembly is **included directly inside the repository** (`/public/stockfish/`). Zero external dependencies or manual engine installations required!
+- ⚡ **MultiPV Engine Lines**: Real-time evaluation displaying the top 3 best moves and principal variation (PV) lines simultaneously.
+- 🎯 **Best Move Suggestion Arrows**: Live cyan SVG arrow overlays indicating the engine's recommended best move directly on the board.
+- ⚠️ **Threat Arrows**: Red warning arrows highlighting immediate opponent captures and tactical threats.
+- 📊 **Dual Evaluation Bars**: Smooth 500ms animated vertical evaluation bar for Desktop and horizontal evaluation bar for Mobile.
+- 🔊 **Chess.com Audio Feedback**: Custom webm audio effects for moves, captures, checks, castling, promotions, and invalid move attempts.
+- 👑 **Pawn Promotion Modal**: Select from Queen, Rook, Bishop, or Knight when pawns reach the back rank.
+- ⚙️ **Assistance Settings**: Custom settings modal (gear icon ⚙️) to toggle Evaluation Bar, Suggestion Arrows, Threat Arrows, Engine Lines, and Sound Effects on or off.
+- 📥 **PGN & FEN Importer**: Import master game PGNs or custom FEN position strings with built-in Kasparov and Carlsen presets.
+- 📱 **100% Mobile & Desktop Responsive**: Tailored layouts for mobile touch devices and widescreen desktop monitors matching Chess.com.
 
-## 🛠️ Tech Stack
+---
 
-- **Framework**: Next.js 15 (App Router, React 19, TypeScript)
-- **Engine**: Stockfish 18 WASM (`stockfish-18-lite-single`)
-- **Chess Logic**: `chess.js`
-- **UI & Styling**: Tailwind CSS, Lucide React Icons, Canvas Confetti
-- **Deployment**: Vercel
+## 🛠️ Engine Architecture (No Installation Required)
 
-## 🚀 Local Development
+The Stockfish 18 WASM binaries (`stockfish-18-lite-single.js` and `stockfish-18-lite-single.wasm`) are pre-compiled and tracked directly inside the `/public/stockfish/` directory.
+
+When you run or deploy the application:
+1. The app initializes a WebWorker from `/public/stockfish/stockfish-18-lite-single.js`.
+2. Stockfish runs 100% locally inside the user's browser off the main UI thread.
+3. No backend server, C++ compilation, or external Stockfish binary installation is needed!
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18.x or higher
+- npm, pnpm, or yarn
+
+### Installation & Local Run
 
 1. **Clone the repository**:
    ```bash
@@ -48,6 +62,8 @@ An interactive, high-performance Chess Game Analysis Web Application built with 
    npm run start
    ```
 
+---
+
 ## 📄 License
 
-MIT License. Stockfish is licensed under GNU GPL v3.
+MIT License. Stockfish is open-source software licensed under GNU GPL v3.
