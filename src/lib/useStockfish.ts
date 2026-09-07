@@ -3,16 +3,17 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Chess } from "chess.js";
 
+export interface PVLine {
+  cp: number | null;
+  mate: number | null;
+  pvSan: string[];
+}
+
 export interface EngineEval {
-  score: number | null; // Centipawns relative to side to move
-  mate: number | null;  // Moves to mate
   depth: number;
-  pv: string[];         // Best move sequence in UCI format e.g. ["e2e4", "e7e5"]
-  pvSan: string[];      // Best move sequence converted to SAN notation e.g. ["e4", "e5", "Nf3"]
-  bestMove: string | null;
-  bestMoveSan?: string;
   nodes?: number;
   nps?: number;
+  lines: PVLine[];
 }
 
 export function useStockfish() {
@@ -21,12 +22,8 @@ export function useStockfish() {
   const [isReady, setIsReady] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [evalData, setEvalData] = useState<EngineEval>({
-    score: 0,
-    mate: null,
     depth: 0,
-    pv: [],
-    pvSan: [],
-    bestMove: null,
+    lines: [],
   });
 
   useEffect(() => {
@@ -35,23 +32,33 @@ export function useStockfish() {
 
     worker.onmessage = (e: MessageEvent) => {
       const line = typeof e.data === "string" ? e.data : "";
-      
+
       if (line === "uciok" || line === "readyok") {
         setIsReady(true);
+        // Request MultiPV 3 lines like Chess.com
+        worker.postMessage("setoption name MultiPV value 3");
       }
 
       if (line.startsWith("info depth")) {
         const parsed = parseStockfishOutput(line, currentFenRef.current);
         if (parsed) {
-          setEvalData((prev) => ({ ...prev, ...parsed }));
+          setEvalData((prev) => {
+            const nextLines = [...prev.lines];
+            if (parsed.multipvIndex !== undefined && parsed.line) {
+              nextLines[parsed.multipvIndex] = parsed.line;
+            }
+            return {
+              depth: parsed.depth ?? prev.depth,
+              nodes: parsed.nodes ?? prev.nodes,
+              nps: parsed.nps ?? prev.nps,
+              lines: nextLines,
+            };
+          });
         }
       }
 
       if (line.startsWith("bestmove")) {
-        const parts = line.split(" ");
-        const bestMove = parts[1] || null;
         setIsAnalyzing(false);
-        setEvalData((prev) => ({ ...prev, bestMove }));
       }
     };
 
@@ -66,26 +73,16 @@ export function useStockfish() {
   const analyzePosition = useCallback((fen: string, depth: number = 18) => {
     if (!workerRef.current) return;
     currentFenRef.current = fen;
-    
+
     workerRef.current.postMessage("stop");
     setIsAnalyzing(true);
     setEvalData({
-      score: null,
-      mate: null,
       depth: 0,
-      pv: [],
-      pvSan: [],
-      bestMove: null,
+      lines: [],
     });
 
     workerRef.current.postMessage(`position fen ${fen}`);
     workerRef.current.postMessage(`go depth ${depth}`);
-  }, []);
-
-  const stopAnalysis = useCallback(() => {
-    if (!workerRef.current) return;
-    workerRef.current.postMessage("stop");
-    setIsAnalyzing(false);
   }, []);
 
   return {
@@ -93,55 +90,56 @@ export function useStockfish() {
     isAnalyzing,
     evalData,
     analyzePosition,
-    stopAnalysis,
   };
 }
 
-function parseStockfishOutput(line: string, fen: string): Partial<EngineEval> | null {
+function parseStockfishOutput(
+  line: string,
+  fen: string
+): {
+  depth?: number;
+  multipvIndex?: number;
+  nodes?: number;
+  nps?: number;
+  line?: PVLine;
+} | null {
   const depthMatch = line.match(/\bdepth (\d+)/);
   if (!depthMatch) return null;
 
   const depth = parseInt(depthMatch[1], 10);
-  
-  let score: number | null = null;
+  const multipvMatch = line.match(/\bmultipv (\d+)/);
+  const multipvIndex = multipvMatch ? parseInt(multipvMatch[1], 10) - 1 : 0;
+
+  let cp: number | null = null;
   let mate: number | null = null;
 
   const cpMatch = line.match(/\bscore cp (-?\d+)/);
-  if (cpMatch) {
-    score = parseInt(cpMatch[1], 10);
-  }
+  if (cpMatch) cp = parseInt(cpMatch[1], 10);
 
   const mateMatch = line.match(/\bscore mate (-?\d+)/);
-  if (mateMatch) {
-    mate = parseInt(mateMatch[1], 10);
-  }
+  if (mateMatch) mate = parseInt(mateMatch[1], 10);
 
-  let pv: string[] = [];
   let pvSan: string[] = [];
   const pvIndex = line.indexOf(" pv ");
-  if (pvIndex !== -1) {
-    pv = line.substring(pvIndex + 4).trim().split(/\s+/);
-    
-    // Convert UCI PV moves to SAN moves using chess.js
-    if (fen && pv.length > 0) {
-      try {
-        const chess = new Chess(fen);
-        for (const uci of pv) {
-          if (uci.length >= 4) {
-            const from = uci.substring(0, 2);
-            const to = uci.substring(2, 4);
-            const promotion = uci.length > 4 ? uci.substring(4, 5) : undefined;
-            const move = chess.move({ from, to, promotion });
-            if (move) {
-              pvSan.push(move.san);
-            } else {
-              break;
-            }
+  if (pvIndex !== -1 && fen) {
+    const rawPv = line.substring(pvIndex + 4).trim().split(/\s+/);
+    try {
+      const chess = new Chess(fen);
+      for (const uci of rawPv) {
+        if (uci.length >= 4) {
+          const from = uci.substring(0, 2);
+          const to = uci.substring(2, 4);
+          const promotion = uci.length > 4 ? uci.substring(4, 5) : undefined;
+          const move = chess.move({ from, to, promotion });
+          if (move) {
+            pvSan.push(move.san);
+          } else {
+            break;
           }
         }
-      } catch (e) {
-        // Fallback
       }
+    } catch (e) {
+      // ignore
     }
   }
 
@@ -150,11 +148,13 @@ function parseStockfishOutput(line: string, fen: string): Partial<EngineEval> | 
 
   return {
     depth,
-    score,
-    mate,
-    pv,
-    pvSan,
+    multipvIndex,
     nodes: nodesMatch ? parseInt(nodesMatch[1], 10) : undefined,
     nps: npsMatch ? parseInt(npsMatch[1], 10) : undefined,
+    line: {
+      cp,
+      mate,
+      pvSan,
+    },
   };
 }

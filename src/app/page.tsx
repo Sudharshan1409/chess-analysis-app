@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Chess, Square } from "chess.js";
 import { useStockfish } from "@/lib/useStockfish";
 import { EvalBar } from "@/components/EvalBar";
-import { MoveList, AnalyzedMove, MoveClassification } from "@/components/MoveList";
+import { MoveList, AnalyzedMove } from "@/components/MoveList";
 import { PgnFenModal } from "@/components/PgnFenModal";
 import {
   RotateCcw,
@@ -15,9 +15,16 @@ import {
   FlipHorizontal,
   Upload,
   Cpu,
-  Zap,
+  Search,
+  Gamepad2,
+  BookOpen,
+  GraduationCap,
+  Tv,
+  Users,
+  Settings,
+  MoreHorizontal,
+  FolderOpen
 } from "lucide-react";
-import confetti from "canvas-confetti";
 
 export default function AnalysisPage() {
   const [game, setGame] = useState(new Chess());
@@ -28,13 +35,11 @@ export default function AnalysisPage() {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isAutoAnalyzing, setIsAutoAnalyzing] = useState(false);
-  const [autoAnalyzeProgress, setAutoAnalyzeProgress] = useState(0);
 
-  // Stockfish Engine
+  // Stockfish Engine Hook (MultiPV 3 lines)
   const { isReady, isAnalyzing, evalData, analyzePosition } = useStockfish();
 
-  // Helper to play Chess.com audio effects
+  // Audio effects helper
   const playSound = useCallback((move: any, newGame?: Chess) => {
     let audioFile = "/sounds/move-self.webm";
     let followUpSound: string | null = null;
@@ -88,25 +93,28 @@ export default function AnalysisPage() {
 
   // Re-run engine whenever position changes
   useEffect(() => {
-    if (isReady && !isAutoAnalyzing) {
+    if (isReady) {
       const fen = getCurrentFen();
       analyzePosition(fen, 18);
     }
-  }, [currentMoveIndex, isReady, getCurrentFen, analyzePosition, isAutoAnalyzing]);
+  }, [currentMoveIndex, isReady, getCurrentFen, analyzePosition]);
 
-  // Update engine arrows (Cyan arrow matching Chess.com)
+  // Update engine arrows (Cyan best move arrow matching Chess.com)
   useEffect(() => {
-    if (evalData.pv && evalData.pv.length > 0) {
-      const bestUci = evalData.pv[0];
-      if (bestUci.length >= 4) {
-        const from = bestUci.substring(0, 2) as Square;
-        const to = bestUci.substring(2, 4) as Square;
-        setArrows([[from, to, "rgba(56, 189, 248, 0.95)"]]);
+    if (evalData.lines.length > 0 && evalData.lines[0]?.pvSan?.length > 0) {
+      const bestMoveSan = evalData.lines[0].pvSan[0];
+      const activeChess = getActiveChess();
+      const moves = activeChess.moves({ verbose: true });
+      const foundMove = moves.find((m) => m.san === bestMoveSan);
+      if (foundMove) {
+        setArrows([[foundMove.from as Square, foundMove.to as Square, "rgba(56, 189, 248, 0.95)"]]);
+      } else {
+        setArrows([]);
       }
     } else {
       setArrows([]);
     }
-  }, [evalData.pv]);
+  }, [evalData.lines, getActiveChess]);
 
   // Make move
   const makeMove = (from: Square, to: Square) => {
@@ -262,40 +270,19 @@ export default function AnalysisPage() {
     playSound("start");
   };
 
-  // Run Game Review
-  const runFullGameReview = async () => {
-    if (history.length === 0) return;
-    setIsAutoAnalyzing(true);
-
-    const reviewedHistory = [...history];
-    const classes: MoveClassification[] = [
-      "best",
-      "excellent",
-      "good",
-      "brilliant",
-      "great",
-      "inaccuracy",
-      "mistake",
-      "blunder",
-    ];
-
-    for (let i = 0; i < reviewedHistory.length; i++) {
-      setAutoAnalyzeProgress(Math.round(((i + 1) / reviewedHistory.length) * 100));
-      reviewedHistory[i].classification =
-        classes[Math.floor(Math.random() * classes.length)];
-      await new Promise((res) => setTimeout(res, 80));
-    }
-
-    setHistory(reviewedHistory);
-    setIsAutoAnalyzing(false);
-
-    confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
-  };
-
   const activeChess = getActiveChess();
   const currentTurn = activeChess.turn();
 
-  // Render 8x8 Board Grid matching Chess.com single PNG image board layout
+  // Top eval score for top line
+  const topEval = evalData.lines[0];
+  const topScoreFormatted =
+    topEval?.mate !== undefined && topEval?.mate !== null
+      ? `M${topEval.mate}`
+      : topEval?.cp !== undefined && topEval?.cp !== null
+      ? `${topEval.cp > 0 ? "+" : ""}${(topEval.cp / 100).toFixed(2)}`
+      : "0.00";
+
+  // Board rank/file orientation
   const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
   const ranks = ["8", "7", "6", "5", "4", "3", "2", "1"];
 
@@ -303,80 +290,83 @@ export default function AnalysisPage() {
   const displayFiles = boardOrientation === "white" ? files : [...files].reverse();
 
   return (
-    <div className="min-h-screen bg-[#1e1c18] text-gray-100 flex flex-col font-sans select-none">
-      {/* Navbar Header */}
-      <header className="bg-[#262421] border-b border-[#312e2b] px-4 sm:px-6 py-2.5 flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-2.5">
-          <div className="bg-[#81b64c] text-white font-black w-9 h-9 rounded-md flex items-center justify-center text-xl shadow">
-            ♟
+    <div className="min-h-screen bg-[#21201d] text-gray-200 flex flex-col lg:flex-row font-sans select-none">
+      {/* 1. Left Chess.com Navigation Bar (Desktop) */}
+      <aside className="hidden lg:flex w-52 bg-[#1d1b18] border-r border-[#2d2b27] flex-col justify-between p-3 shrink-0">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 px-2 py-1">
+            <div className="text-emerald-500 text-2xl font-black">♟</div>
+            <span className="font-extrabold text-white text-lg tracking-wide">Chess.com</span>
           </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold tracking-wide text-white flex items-center gap-2">
-              Chess.com Game Analysis
-            </h1>
-            <p className="text-[11px] text-gray-400 hidden sm:block">
-              Stockfish 18 WASM local engine analysis
-            </p>
-          </div>
+
+          <nav className="space-y-1 text-sm font-bold">
+            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-[#282622] transition">
+              <Gamepad2 className="w-5 h-5 text-amber-500" /> Play
+            </a>
+            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-[#282622] transition">
+              <Search className="w-5 h-5 text-emerald-500" /> Puzzles
+            </a>
+            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-[#282622] transition">
+              <GraduationCap className="w-5 h-5 text-cyan-500" /> Learn
+            </a>
+            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-white bg-[#282622] transition">
+              <Cpu className="w-5 h-5 text-[#81b64c]" /> Analysis
+            </a>
+            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-[#282622] transition">
+              <Tv className="w-5 h-5 text-blue-500" /> Watch
+            </a>
+            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-[#282622] transition">
+              <Users className="w-5 h-5 text-purple-500" /> Community
+            </a>
+          </nav>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 bg-[#312e2b] hover:bg-[#3d3a36] text-gray-200 px-3 py-1.5 rounded-md text-xs font-semibold transition border border-[#423f3b]"
-          >
-            <Upload className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">Import</span> PGN/FEN
-          </button>
-
-          <button
-            onClick={runFullGameReview}
-            disabled={history.length === 0 || isAutoAnalyzing}
-            className="flex items-center gap-1.5 bg-[#81b64c] hover:bg-[#a3d16b] disabled:opacity-50 text-black font-extrabold px-3.5 py-1.5 rounded-md text-xs shadow transition"
-          >
-            <Zap className="w-3.5 h-3.5 fill-current" />
-            {isAutoAnalyzing ? `${autoAnalyzeProgress}%` : "Game Review"}
+        <div className="space-y-2 border-t border-[#2d2b27] pt-3">
+          <button onClick={() => setIsModalOpen(true)} className="w-full flex items-center gap-2 bg-[#2d2a26] hover:bg-[#383531] text-amber-400 px-3 py-2 rounded-lg text-xs font-bold transition">
+            <Upload className="w-4 h-4" /> Import PGN / FEN
           </button>
         </div>
+      </aside>
+
+      {/* Mobile Top Header */}
+      <header className="lg:hidden bg-[#1d1b18] border-b border-[#2d2b27] px-4 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-emerald-500 font-black text-xl">♟</span>
+          <span className="font-extrabold text-white text-base">Chess Analysis</span>
+        </div>
+        <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-1.5 bg-[#2d2a26] text-amber-400 px-3 py-1.5 rounded-md text-xs font-bold border border-[#3c3934]">
+          <Upload className="w-3.5 h-3.5" /> Import
+        </button>
       </header>
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-2 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        {/* Board & Controls Area (8 Cols) */}
-        <div className="lg:col-span-7 xl:col-span-8 flex flex-col items-center">
-          {/* Top Engine Info Bar */}
-          <div className="w-full max-w-[560px] bg-[#262421] border border-[#312e2b] rounded-t-lg p-2.5 flex items-center justify-between text-xs font-mono shadow-sm">
-            <div className="flex items-center gap-2 text-gray-300">
-              <Cpu className="w-4 h-4 text-[#81b64c] animate-pulse" />
-              <span>Depth {evalData.depth}</span>
-              <span className="hidden sm:inline text-gray-500">|</span>
-              <span className="hidden sm:inline">
-                NPS: {evalData.nps ? Math.round(evalData.nps / 1000) + "k" : "0"}
-              </span>
+      {/* 2. Main Workspace (Center Board + Right Sidebar) */}
+      <div className="flex-1 flex flex-col lg:flex-row min-h-screen max-w-[1600px] w-full mx-auto p-2 lg:p-4 gap-4 items-center lg:items-stretch justify-center">
+        {/* Center Main Board Area */}
+        <div className="flex-1 flex flex-col items-center justify-center max-w-[800px] w-full">
+          {/* Top Player Info (Black) */}
+          <div className="w-full flex items-center justify-between py-1 px-1 text-xs text-gray-300 font-bold">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-[#312e2b] flex items-center justify-center text-gray-400 text-xs">👤</div>
+              <span>{boardOrientation === "white" ? "Black" : "White"}</span>
             </div>
-            <div className="font-extrabold text-amber-400 text-sm">
-              {evalData.mate !== null
-                ? `M${evalData.mate}`
-                : evalData.score !== null
-                ? `${(evalData.score / 100).toFixed(2)}`
-                : "0.00"}
+            <div className="flex items-center gap-2 font-mono">
+              <span className="text-gray-400">depth={evalData.depth}</span>
+              <span className="text-amber-400 font-extrabold">{topScoreFormatted}</span>
             </div>
           </div>
 
-          {/* Board Wrapper with Eval Bar & Authentic Chess.com Board Image */}
-          <div className="w-full max-w-[560px] flex rounded-b-lg overflow-hidden shadow-2xl border border-[#312e2b]">
+          {/* Board Container with Eval Bar */}
+          <div className="w-full aspect-square max-h-[calc(100vh-140px)] flex shadow-2xl rounded overflow-hidden border border-[#312e2b]">
             <EvalBar
-              score={evalData.score}
-              mate={evalData.mate}
+              score={topEval?.cp ?? null}
+              mate={topEval?.mate ?? null}
               turn={currentTurn}
               orientation={boardOrientation}
               isAnalyzing={isAnalyzing}
             />
 
-            {/* Chess.com Image Background Grid */}
-            <div
-              className="flex-1 aspect-square grid grid-cols-8 grid-rows-8 relative chess-board-theme overflow-hidden"
-            >
+            {/* Chess.com Authentic Board Theme */}
+            <div className="flex-1 aspect-square grid grid-cols-8 grid-rows-8 relative chess-board-theme overflow-hidden">
               {displayRanks.map((r, rIdx) =>
                 displayFiles.map((f, fIdx) => {
                   const sq = `${f}${r}` as Square;
@@ -384,7 +374,6 @@ export default function AnalysisPage() {
                   const isSelected = selectedSquare === sq;
                   const isValidTarget = validMoves.includes(sq);
 
-                  // Derive Chess.com Neo piece URL
                   const pieceImgUrl = piece
                     ? `https://images.chesscomfiles.com/chess-themes/pieces/neo/150/${piece.color}${piece.type}.png`
                     : null;
@@ -397,7 +386,6 @@ export default function AnalysisPage() {
                         isSelected ? "bg-amber-300/50" : ""
                       }`}
                     >
-                      {/* Piece Image */}
                       {pieceImgUrl && (
                         <img
                           src={pieceImgUrl}
@@ -407,7 +395,6 @@ export default function AnalysisPage() {
                         />
                       )}
 
-                      {/* Valid Move Indicator */}
                       {isValidTarget && (
                         <div
                           className={`absolute ${
@@ -418,7 +405,6 @@ export default function AnalysisPage() {
                         />
                       )}
 
-                      {/* Rank / File Notation Labels */}
                       {fIdx === 0 && (
                         <span className="absolute top-0.5 left-1 text-[10px] font-bold text-gray-700/80">
                           {r}
@@ -436,49 +422,112 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Navigation Control Toolbar */}
-          <div className="w-full max-w-[560px] bg-[#262421] border border-[#312e2b] rounded-lg mt-2.5 p-2.5 sm:p-3 flex items-center justify-between shadow">
-            <div className="flex items-center gap-2 sm:gap-4 flex-1">
+          {/* Bottom Player Info (White) */}
+          <div className="w-full flex items-center justify-between py-1 px-1 text-xs text-gray-300 font-bold">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-gray-200 text-black flex items-center justify-center text-xs">👤</div>
+              <span>{boardOrientation === "white" ? "White" : "Black"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Right Sidebar Container (Tabs + MultiPV Lines + Move History + Bottom Navigation Bar) */}
+        <div className="w-full lg:w-[420px] bg-[#262421] border border-[#312e2b] rounded-lg shadow-xl flex flex-col shrink-0 h-[600px] lg:h-auto lg:max-h-[calc(100vh-40px)] my-auto">
+          {/* Top Analysis Header */}
+          <div className="bg-[#1e1c18] px-4 py-3 border-b border-[#312e2b] flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-bold text-white">
+              <Search className="w-4 h-4 text-emerald-400" />
+              <span>Analysis</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-gray-400 font-mono">
+              <span className="flex items-center gap-1 text-emerald-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                Stockfish 18
+              </span>
+            </div>
+          </div>
+
+          {/* MultiPV Lines Section (Top 3 Lines) */}
+          <div className="bg-[#1e1c18] border-b border-[#312e2b] p-2 space-y-1">
+            {evalData.lines.slice(0, 3).map((line, idx) => {
+              const scoreStr =
+                line.mate !== null && line.mate !== undefined
+                  ? `M${line.mate}`
+                  : line.cp !== null && line.cp !== undefined
+                  ? `${line.cp > 0 ? "+" : ""}${(line.cp / 100).toFixed(2)}`
+                  : "0.00";
+
+              return (
+                <div key={idx} className="flex items-center gap-2 text-xs font-mono bg-[#262421] p-1.5 rounded border border-[#312e2b]">
+                  <span className="bg-[#312e2b] text-amber-400 px-1.5 py-0.5 rounded font-extrabold text-[11px] shrink-0">
+                    {scoreStr}
+                  </span>
+                  <div className="text-gray-300 truncate">
+                    {line.pvSan && line.pvSan.length > 0 ? (
+                      <span>
+                        <strong className="text-amber-300 mr-1">1. {line.pvSan[0]}</strong>
+                        {line.pvSan.slice(1, 6).join(" ")}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500 italic">Calculating line {idx + 1}...</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Move History Panel */}
+          <div className="flex-1 overflow-hidden p-2 flex flex-col min-h-0 bg-[#262421]">
+            <MoveList
+              history={history}
+              currentMoveIndex={currentMoveIndex}
+              onSelectMove={(idx) => setCurrentMoveIndex(idx)}
+            />
+          </div>
+
+          {/* Bottom Bar: Navigation Controls + Flip Board (Chess.com Style) */}
+          <div className="bg-[#1e1c18] border-t border-[#312e2b] p-2 flex flex-col gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <button
                 onClick={goToStart}
-                className="p-2.5 sm:p-3 text-gray-300 hover:text-white hover:bg-[#312e2b] bg-[#1e1c18] border border-[#3c3934] rounded-lg transition active:scale-95 flex items-center justify-center"
-                title="Start Position (Up Arrow)"
+                className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
+                title="First Move"
               >
-                <SkipBack className="w-5 h-5 sm:w-6 sm:h-6" />
+                <SkipBack className="w-5 h-5" />
               </button>
               <button
                 onClick={goToPrev}
-                className="p-2.5 sm:p-3 text-gray-300 hover:text-white hover:bg-[#312e2b] bg-[#1e1c18] border border-[#3c3934] rounded-lg transition active:scale-95 flex-1 flex items-center justify-center"
-                title="Previous Move (Left Arrow)"
+                className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
+                title="Previous Move"
               >
-                <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
+                <ChevronLeft className="w-6 h-6" />
               </button>
               <button
                 onClick={goToNext}
-                className="p-2.5 sm:p-3 text-gray-300 hover:text-white hover:bg-[#312e2b] bg-[#1e1c18] border border-[#3c3934] rounded-lg transition active:scale-95 flex-1 flex items-center justify-center"
-                title="Next Move (Right Arrow)"
+                className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
+                title="Next Move"
               >
-                <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
+                <ChevronRight className="w-6 h-6" />
               </button>
               <button
                 onClick={goToEnd}
-                className="p-2.5 sm:p-3 text-gray-300 hover:text-white hover:bg-[#312e2b] bg-[#1e1c18] border border-[#3c3934] rounded-lg transition active:scale-95 flex items-center justify-center"
-                title="Latest Move (Down Arrow)"
+                className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 hover:text-white rounded-lg flex items-center justify-center font-bold text-sm transition active:scale-95 border border-[#383531]"
+                title="Last Move"
               >
-                <SkipForward className="w-5 h-5 sm:w-6 sm:h-6" />
+                <SkipForward className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex items-center gap-2 ml-3">
+            <div className="flex items-center justify-between px-1 pt-1 text-xs text-gray-400 font-bold">
               <button
-                onClick={() =>
-                  setBoardOrientation((prev) => (prev === "white" ? "black" : "white"))
-                }
-                className="flex items-center gap-1.5 px-3 py-2.5 bg-[#312e2b] hover:bg-[#3d3a36] text-xs sm:text-sm font-bold rounded-lg text-gray-300 transition active:scale-95 border border-[#423f3b]"
+                onClick={() => setBoardOrientation((prev) => (prev === "white" ? "black" : "white"))}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded border border-[#383531] transition"
               >
-                <FlipHorizontal className="w-4 h-4 text-amber-400" />
-                Flip
+                <FlipHorizontal className="w-3.5 h-3.5 text-amber-400" />
+                Flip Board
               </button>
+
               <button
                 onClick={() => {
                   setGame(new Chess());
@@ -488,58 +537,15 @@ export default function AnalysisPage() {
                   setValidMoves([]);
                   playSound("start");
                 }}
-                className="p-2.5 text-gray-400 hover:text-red-400 hover:bg-[#312e2b] bg-[#1e1c18] border border-[#3c3934] rounded-lg transition active:scale-95"
-                title="Reset Board"
+                className="flex items-center gap-1 px-3 py-1.5 text-gray-400 hover:text-red-400 transition"
               >
-                <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset
               </button>
             </div>
           </div>
         </div>
-
-        {/* Right Sidebar (4 Cols) */}
-        <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-3 h-[560px]">
-          {/* Top Engine PV Line Box */}
-          <div className="bg-[#262421] border border-[#312e2b] rounded-xl p-3 shadow-md">
-            <div className="flex items-center justify-between text-xs text-gray-400 font-bold mb-2 pb-1 border-b border-[#312e2b]">
-              <span className="flex items-center gap-1.5 text-[#81b64c]">
-                <Cpu className="w-3.5 h-3.5" /> Best Line (SAN)
-              </span>
-              <span>Stockfish 18</span>
-            </div>
-            <div className="font-mono text-xs text-gray-200 bg-[#1e1c18] p-2.5 rounded-lg border border-[#312e2b] min-h-[44px] flex items-center overflow-x-auto">
-              {evalData.pvSan && evalData.pvSan.length > 0 ? (
-                <span>
-                  <strong className="text-amber-400 font-bold mr-1.5">
-                    1. {evalData.pvSan[0]}
-                  </strong>
-                  {evalData.pvSan.slice(1, 8).join(" ")}
-                </span>
-              ) : (
-                <span className="text-gray-500 text-xs italic">Analyzing position...</span>
-              )}
-            </div>
-          </div>
-
-          {/* Move History Panel */}
-          <div className="flex-1 bg-[#262421] border border-[#312e2b] rounded-xl p-3 shadow-md flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-2 pb-1 border-b border-[#312e2b]">
-              <h2 className="text-xs font-bold text-white flex items-center gap-2">
-                Move History
-                <span className="text-[10px] bg-[#312e2b] text-gray-400 px-2 py-0.5 rounded-full font-mono">
-                  {history.length}
-                </span>
-              </h2>
-            </div>
-
-            <MoveList
-              history={history}
-              currentMoveIndex={currentMoveIndex}
-              onSelectMove={(idx) => setCurrentMoveIndex(idx)}
-            />
-          </div>
-        </div>
-      </main>
+      </div>
 
       <PgnFenModal
         isOpen={isModalOpen}

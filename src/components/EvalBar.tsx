@@ -17,7 +17,6 @@ export const EvalBar: React.FC<EvalBarProps> = ({
   orientation = "white",
   isAnalyzing = false,
 }) => {
-  // Convert relative score/mate to absolute White perspective
   let absoluteScore = score;
   let absoluteMate = mate;
 
@@ -43,8 +42,7 @@ export const EvalBar: React.FC<EvalBarProps> = ({
   } else if (absoluteScore !== null) {
     const cp = absoluteScore / 100;
     evalText = cp > 0 ? `+${cp.toFixed(1)}` : cp.toFixed(1);
-    
-    // Chess.com style winning probability formula
+
     const winningProb = 1 / (1 + Math.pow(10, -cp / 4));
     whitePercent = Math.min(Math.max(winningProb * 100, 2), 98);
   }
@@ -54,7 +52,7 @@ export const EvalBar: React.FC<EvalBarProps> = ({
   const bottomPercent = 100 - topPercent;
 
   return (
-    <div className="relative w-6 sm:w-7 h-full bg-[#262421] rounded-l overflow-hidden flex flex-col justify-between border-r border-[#312e2b] select-none font-bold text-[11px]">
+    <div className="relative w-5 sm:w-6 h-full bg-[#262421] overflow-hidden flex flex-col justify-between border-r border-[#312e2b] select-none font-bold text-[10px]">
       {/* Top Section */}
       <div
         className="w-full transition-all duration-300 ease-out flex items-start justify-center pt-1"
@@ -64,7 +62,7 @@ export const EvalBar: React.FC<EvalBarProps> = ({
           color: topIsWhite ? "#262421" : "#989795",
         }}
       >
-        <span>{topPercent > 12 ? evalText : ""}</span>
+        <span>{topPercent > 10 ? evalText : ""}</span>
       </div>
 
       {/* Bottom Section */}
@@ -76,7 +74,7 @@ export const EvalBar: React.FC<EvalBarProps> = ({
           color: topIsWhite ? "#989795" : "#262421",
         }}
       >
-        <span>{bottomPercent > 12 ? evalText : ""}</span>
+        <span>{bottomPercent > 10 ? evalText : ""}</span>
       </div>
 
       {isAnalyzing && (
