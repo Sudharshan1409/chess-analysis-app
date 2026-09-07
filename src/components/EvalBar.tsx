@@ -61,17 +61,17 @@ export const EvalBar: React.FC<EvalBarProps> = ({
   const bottomPercent = 100 - topPercent;
 
   return (
-    <div className="relative w-5 sm:w-6 h-full bg-[#262421] overflow-hidden flex flex-col justify-between border-r border-[#312e2b] select-none font-bold text-[10px] shrink-0 z-30">
+    <div className="relative w-4 h-full bg-[#262421] overflow-hidden flex flex-col justify-between border-r border-[#312e2b] select-none font-bold text-[9px] shrink-0 z-10">
       {/* Top Section */}
       <div
         className="w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-start justify-center pt-1"
         style={{
           height: `${topPercent}%`,
-          backgroundColor: topIsWhite ? "#ffffff" : "#262421",
-          color: topIsWhite ? "#262421" : "#989795",
+          backgroundColor: topIsWhite ? "#3c3934" : "#1a1815",
+          color: topIsWhite ? "#ffffff" : "#807d78",
         }}
       >
-        <span>{topPercent > 10 ? evalText : ""}</span>
+        <span>{topPercent > 12 ? evalText : ""}</span>
       </div>
 
       {/* Bottom Section */}
@@ -79,11 +79,11 @@ export const EvalBar: React.FC<EvalBarProps> = ({
         className="w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-end justify-center pb-1"
         style={{
           height: `${bottomPercent}%`,
-          backgroundColor: topIsWhite ? "#262421" : "#ffffff",
-          color: topIsWhite ? "#989795" : "#262421",
+          backgroundColor: topIsWhite ? "#1a1815" : "#3c3934",
+          color: topIsWhite ? "#807d78" : "#ffffff",
         }}
       >
-        <span>{bottomPercent > 10 ? evalText : ""}</span>
+        <span>{bottomPercent > 12 ? evalText : ""}</span>
       </div>
 
       {isAnalyzing && (
