@@ -61,29 +61,29 @@ export const HorizontalEvalBar: React.FC<HorizontalEvalBarProps> = ({
   const rightPercent = 100 - leftPercent;
 
   return (
-    <div className="w-full h-3.5 bg-[#262421] rounded-t overflow-hidden flex border-b border-[#312e2b] select-none font-bold text-[10px] my-1 shadow-inner relative">
+    <div className="w-full h-5 bg-[#262421] rounded overflow-hidden flex border-b border-[#312e2b] select-none font-bold text-xs my-1 shadow-inner relative">
       {/* Left Section */}
       <div
-        className="h-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-center justify-start pl-1.5"
+        className="h-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-center justify-start pl-2"
         style={{
           width: `${leftPercent}%`,
           backgroundColor: leftIsWhite ? "#ffffff" : "#262421",
           color: leftIsWhite ? "#262421" : "#989795",
         }}
       >
-        <span>{leftPercent > 15 ? evalText : ""}</span>
+        <span>{leftPercent > 12 ? evalText : ""}</span>
       </div>
 
       {/* Right Section */}
       <div
-        className="h-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-center justify-end pr-1.5"
+        className="h-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-center justify-end pr-2"
         style={{
           width: `${rightPercent}%`,
           backgroundColor: leftIsWhite ? "#262421" : "#ffffff",
           color: leftIsWhite ? "#989795" : "#262421",
         }}
       >
-        <span>{rightPercent > 15 ? evalText : ""}</span>
+        <span>{rightPercent > 12 ? evalText : ""}</span>
       </div>
 
       {isAnalyzing && (
