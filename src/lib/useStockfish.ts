@@ -48,7 +48,7 @@ export function useStockfish() {
               nextLines[parsed.multipvIndex] = parsed.line;
             }
             return {
-              depth: parsed.depth !== undefined && parsed.depth > prev.depth ? parsed.depth : prev.depth,
+              depth: parsed.depth !== undefined ? parsed.depth : prev.depth,
               nodes: parsed.nodes ?? prev.nodes,
               nps: parsed.nps ?? prev.nps,
               lines: nextLines,
@@ -76,6 +76,12 @@ export function useStockfish() {
 
     workerRef.current.postMessage("stop");
     setIsAnalyzing(true);
+    // Clear previous lines immediately when position changes so stale arrows are removed
+    setEvalData({
+      depth: 0,
+      lines: [],
+    });
+
     workerRef.current.postMessage(`position fen ${fen}`);
     workerRef.current.postMessage(`go depth ${depth}`);
   }, []);

@@ -103,12 +103,19 @@ export default function AnalysisPage() {
       if (bestUci && bestUci.length >= 4) {
         const from = bestUci.substring(0, 2) as Square;
         const to = bestUci.substring(2, 4) as Square;
-        setArrows([{ from, to }]);
-        return;
+
+        // Verify move is valid on current position before drawing arrow
+        const activeChess = getActiveChess();
+        const moves = activeChess.moves({ verbose: true });
+        const isValid = moves.some((m) => m.from === from && m.to === to);
+        if (isValid) {
+          setArrows([{ from, to }]);
+          return;
+        }
       }
     }
     setArrows([]);
-  }, [evalData.lines]);
+  }, [evalData.lines, getActiveChess]);
 
   // Make move
   const makeMove = (from: Square, to: Square) => {
