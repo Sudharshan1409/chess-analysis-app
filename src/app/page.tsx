@@ -286,9 +286,9 @@ export default function AnalysisPage() {
   const displayFiles = boardOrientation === "white" ? files : [...files].reverse();
 
   return (
-    <div className="min-h-screen bg-[#21201d] text-gray-200 flex flex-col lg:flex-row font-sans select-none overflow-x-hidden">
+    <div className="h-screen w-screen bg-[#21201d] text-gray-200 flex flex-col lg:flex-row font-sans select-none overflow-hidden">
       {/* 1. Left Chess.com Navigation Bar (Desktop) */}
-      <aside className="hidden lg:flex w-52 bg-[#1d1b18] border-r border-[#2d2b27] flex-col justify-between p-3 shrink-0">
+      <aside className="hidden lg:flex w-48 h-full bg-[#1d1b18] border-r border-[#2d2b27] flex-col justify-between p-3 shrink-0">
         <div className="space-y-4">
           <div className="flex items-center gap-2 px-2 py-1">
             <div className="text-emerald-500 text-2xl font-black">♟</div>
@@ -325,7 +325,7 @@ export default function AnalysisPage() {
       </aside>
 
       {/* Mobile Top Header */}
-      <header className="lg:hidden bg-[#1d1b18] border-b border-[#2d2b27] px-4 py-2.5 flex items-center justify-between">
+      <header className="lg:hidden bg-[#1d1b18] border-b border-[#2d2b27] px-4 py-2.5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-emerald-500 font-black text-xl">♟</span>
           <span className="font-extrabold text-white text-base">Chess Analysis</span>
@@ -335,12 +335,12 @@ export default function AnalysisPage() {
         </button>
       </header>
 
-      {/* 2. Main Workspace (Full Heights & Scaled Board) */}
-      <div className="flex-1 flex flex-col lg:flex-row w-full p-2 lg:p-6 gap-6 items-center lg:items-start justify-center min-h-screen">
-        {/* Center Main Board Area */}
-        <div className="flex-1 flex flex-col items-center justify-start w-full max-w-[1100px]">
+      {/* 2. Main Workspace (Full Viewport Height Layout) */}
+      <div className="flex-1 h-full flex flex-col lg:flex-row p-2 lg:p-4 gap-4 items-center lg:items-stretch justify-between overflow-hidden">
+        {/* Center Main Board Area - Expands vertically to fill ~calc(100vh - 40px) */}
+        <div className="flex-1 h-full flex flex-col items-center justify-between min-w-0">
           {/* Top Player Info (Black) */}
-          <div className="w-full max-w-[850px] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold mb-1">
+          <div className="w-full flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-[#312e2b] flex items-center justify-center text-gray-400 text-xs">👤</div>
               <span>{boardOrientation === "white" ? "Black" : "White"}</span>
@@ -351,75 +351,77 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Large Board Container with Left-Attached Eval Bar */}
-          <div className="w-full max-w-[850px] aspect-square flex shadow-2xl rounded overflow-hidden border border-[#312e2b] bg-[#1d1b18]">
-            <EvalBar
-              score={topEval?.cp ?? null}
-              mate={topEval?.mate ?? null}
-              turn={currentTurn}
-              orientation={boardOrientation}
-              isAnalyzing={isAnalyzing}
-            />
+          {/* Large Square Board Area - Maximize Viewport Height */}
+          <div className="flex-1 w-full flex items-center justify-center min-h-0 py-1">
+            <div className="h-full aspect-square max-w-full flex shadow-2xl rounded overflow-hidden border border-[#312e2b] bg-[#1d1b18]">
+              <EvalBar
+                score={topEval?.cp ?? null}
+                mate={topEval?.mate ?? null}
+                turn={currentTurn}
+                orientation={boardOrientation}
+                isAnalyzing={isAnalyzing}
+              />
 
-            {/* Chess.com Authentic Board Theme */}
-            <div className="flex-1 aspect-square grid grid-cols-8 grid-rows-8 relative chess-board-theme overflow-hidden">
-              {displayRanks.map((r, rIdx) =>
-                displayFiles.map((f, fIdx) => {
-                  const sq = `${f}${r}` as Square;
-                  const piece = activeChess.get(sq);
-                  const isSelected = selectedSquare === sq;
-                  const isValidTarget = validMoves.includes(sq);
+              {/* Chess.com Authentic Board Theme */}
+              <div className="flex-1 aspect-square grid grid-cols-8 grid-rows-8 relative chess-board-theme overflow-hidden">
+                {displayRanks.map((r, rIdx) =>
+                  displayFiles.map((f, fIdx) => {
+                    const sq = `${f}${r}` as Square;
+                    const piece = activeChess.get(sq);
+                    const isSelected = selectedSquare === sq;
+                    const isValidTarget = validMoves.includes(sq);
 
-                  const pieceImgUrl = piece
-                    ? `https://images.chesscomfiles.com/chess-themes/pieces/neo/150/${piece.color}${piece.type}.png`
-                    : null;
+                    const pieceImgUrl = piece
+                      ? `https://images.chesscomfiles.com/chess-themes/pieces/neo/150/${piece.color}${piece.type}.png`
+                      : null;
 
-                  return (
-                    <div
-                      key={sq}
-                      onClick={() => handleSquareClick(sq)}
-                      className={`relative flex items-center justify-center cursor-pointer ${
-                        isSelected ? "bg-amber-300/50" : ""
-                      }`}
-                    >
-                      {pieceImgUrl && (
-                        <img
-                          src={pieceImgUrl}
-                          alt={sq}
-                          className="w-full h-full object-contain pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]"
-                          draggable={false}
-                        />
-                      )}
+                    return (
+                      <div
+                        key={sq}
+                        onClick={() => handleSquareClick(sq)}
+                        className={`relative flex items-center justify-center cursor-pointer ${
+                          isSelected ? "bg-amber-300/50" : ""
+                        }`}
+                      >
+                        {pieceImgUrl && (
+                          <img
+                            src={pieceImgUrl}
+                            alt={sq}
+                            className="w-full h-full object-contain pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]"
+                            draggable={false}
+                          />
+                        )}
 
-                      {isValidTarget && (
-                        <div
-                          className={`absolute ${
-                            piece
-                              ? "inset-0 border-4 border-red-500/60 rounded-full"
-                              : "w-4 h-4 bg-black/25 rounded-full"
-                          }`}
-                        />
-                      )}
+                        {isValidTarget && (
+                          <div
+                            className={`absolute ${
+                              piece
+                                ? "inset-0 border-4 border-red-500/60 rounded-full"
+                                : "w-4 h-4 bg-black/25 rounded-full"
+                            }`}
+                          />
+                        )}
 
-                      {fIdx === 0 && (
-                        <span className="absolute top-0.5 left-1 text-[11px] font-bold text-gray-700/80">
-                          {r}
-                        </span>
-                      )}
-                      {rIdx === 7 && (
-                        <span className="absolute bottom-0.5 right-1 text-[11px] font-bold text-gray-700/80">
-                          {f}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })
-              )}
+                        {fIdx === 0 && (
+                          <span className="absolute top-0.5 left-1 text-[11px] font-bold text-gray-700/80">
+                            {r}
+                          </span>
+                        )}
+                        {rIdx === 7 && (
+                          <span className="absolute bottom-0.5 right-1 text-[10px] font-bold text-gray-700/80">
+                            {f}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
 
           {/* Bottom Player Info (White) */}
-          <div className="w-full max-w-[850px] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold mt-1">
+          <div className="w-full flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-gray-200 text-black flex items-center justify-center text-xs">👤</div>
               <span>{boardOrientation === "white" ? "White" : "Black"}</span>
@@ -427,10 +429,10 @@ export default function AnalysisPage() {
           </div>
         </div>
 
-        {/* 3. Right Sidebar Container (Fixed Width 440px on Desktop) */}
-        <div className="w-full lg:w-[440px] bg-[#262421] border border-[#312e2b] rounded-lg shadow-2xl flex flex-col shrink-0 h-[650px] lg:h-[calc(100vh-60px)]">
+        {/* 3. Right Sidebar Container (Fixed 420px Width, Full Viewport Height) */}
+        <div className="w-full lg:w-[420px] h-full bg-[#262421] border border-[#312e2b] rounded-lg shadow-2xl flex flex-col shrink-0 overflow-hidden">
           {/* Top Analysis Header */}
-          <div className="bg-[#1e1c18] px-4 py-3 border-b border-[#312e2b] flex items-center justify-between">
+          <div className="bg-[#1e1c18] px-4 py-3 border-b border-[#312e2b] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2 text-sm font-bold text-white">
               <Search className="w-4 h-4 text-emerald-400" />
               <span>Analysis</span>
@@ -444,7 +446,7 @@ export default function AnalysisPage() {
           </div>
 
           {/* MultiPV Lines Section (Top 3 Lines) */}
-          <div className="bg-[#1e1c18] border-b border-[#312e2b] p-2 space-y-1.5">
+          <div className="bg-[#1e1c18] border-b border-[#312e2b] p-2 space-y-1.5 shrink-0">
             {evalData.lines.slice(0, 3).map((line, idx) => {
               const scoreStr =
                 line.mate !== null && line.mate !== undefined
@@ -483,7 +485,7 @@ export default function AnalysisPage() {
           </div>
 
           {/* Bottom Bar: Navigation Controls + Flip Board (Chess.com Style) */}
-          <div className="bg-[#1e1c18] border-t border-[#312e2b] p-3 flex flex-col gap-2">
+          <div className="bg-[#1e1c18] border-t border-[#312e2b] p-3 flex flex-col gap-2 shrink-0">
             <div className="grid grid-cols-4 gap-2">
               <button
                 onClick={goToStart}
