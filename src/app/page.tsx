@@ -418,10 +418,10 @@ export default function AnalysisPage() {
 
       {/* 2. Main Workspace */}
       <div className="flex-1 h-full flex flex-col lg:flex-row p-2 lg:p-4 gap-4 items-center justify-center overflow-y-auto lg:overflow-hidden">
-        {/* Center Main Board Area */}
-        <div className="w-full lg:flex-1 lg:h-full flex flex-col items-center justify-center min-w-0">
+        {/* Center Main Board Area (Fully stretched height on Desktop, 1:1 Aspect Ratio) */}
+        <div className="w-full lg:flex-1 lg:h-full flex flex-col items-center justify-between min-w-0">
           {/* Top Player Info (Black) */}
-          <div className="w-full lg:w-[min(840px,calc(100vh-100px))] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
+          <div className="w-full lg:w-auto lg:min-w-[760px] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-[#312e2b] flex items-center justify-center text-gray-400 text-xs">👤</div>
               <span>{boardOrientation === "white" ? "Black" : "White"}</span>
@@ -445,8 +445,8 @@ export default function AnalysisPage() {
             </div>
           )}
 
-          {/* Square Board Container - Strict w-full aspect-square on Mobile; Scaled 840px 1:1 on Desktop */}
-          <div className="w-full lg:w-[min(840px,calc(100vh-100px))] lg:h-[min(840px,calc(100vh-100px))] aspect-square flex items-center justify-center shrink-0 my-0">
+          {/* Fully Stretched Viewport Square Board Container on Desktop (lg:h-[calc(100vh-80px)]) */}
+          <div className="w-full lg:w-auto lg:h-[calc(100vh-80px)] aspect-square flex items-center justify-center shrink-0 my-0">
             <div className="w-full h-full aspect-square flex shadow-2xl rounded overflow-hidden border border-[#312e2b] bg-[#1d1b18] relative">
               {/* Vertical Eval Bar for Desktop */}
               {settings.showEvalBar && (
@@ -551,7 +551,7 @@ export default function AnalysisPage() {
           </div>
 
           {/* Bottom Player Info (White) */}
-          <div className="w-full lg:w-[min(840px,calc(100vh-100px))] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
+          <div className="w-full lg:w-auto lg:min-w-[760px] flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-gray-200 text-black flex items-center justify-center text-xs">👤</div>
               <span>{boardOrientation === "white" ? "White" : "Black"}</span>
