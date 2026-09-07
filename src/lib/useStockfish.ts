@@ -62,6 +62,10 @@ export function useStockfish() {
       }
     };
 
+    worker.onerror = (err) => {
+      console.error("Stockfish worker error:", err);
+    };
+
     worker.postMessage("uci");
     worker.postMessage("isready");
 
@@ -76,11 +80,6 @@ export function useStockfish() {
 
     workerRef.current.postMessage("stop");
     setIsAnalyzing(true);
-    // Clear previous lines immediately when position changes so stale arrows are removed
-    setEvalData({
-      depth: 0,
-      lines: [],
-    });
 
     workerRef.current.postMessage(`position fen ${fen}`);
     workerRef.current.postMessage(`go depth ${depth}`);
