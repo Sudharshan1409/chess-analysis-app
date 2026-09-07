@@ -20,6 +20,9 @@ export interface EngineEval {
 export function useStockfish() {
   const workerRef = useRef<Worker | null>(null);
   const currentFenRef = useRef<string>("");
+  const isPendingRef = useRef<boolean>(false);
+  const nextFenRef = useRef<string | null>(null);
+
   const [isReady, setIsReady] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [evalData, setEvalData] = useState<EngineEval>({
@@ -27,9 +30,18 @@ export function useStockfish() {
     lines: [],
   });
 
-  useEffect(() => {
+  const initWorker = useCallback(() => {
+    if (workerRef.current) {
+      try {
+        workerRef.current.terminate();
+      } catch (e) {
+        // ignore
+      }
+    }
+
     const worker = new Worker("/stockfish/stockfish-18-lite-single.js");
     workerRef.current = worker;
+    isPendingRef.current = false;
 
     worker.onmessage = (e: MessageEvent) => {
       const line = typeof e.data === "string" ? e.data : "";
@@ -59,25 +71,40 @@ export function useStockfish() {
 
       if (line.startsWith("bestmove")) {
         setIsAnalyzing(false);
+        isPendingRef.current = false;
+
+        // If a newer FEN was queued while evaluating, send it now
+        if (nextFenRef.current && nextFenRef.current !== currentFenRef.current) {
+          const nextFen = nextFenRef.current;
+          nextFenRef.current = null;
+          analyzePosition(nextFen);
+        }
       }
     };
 
     worker.onerror = (err) => {
-      console.error("Stockfish worker error:", err);
+      console.error("Stockfish worker error, restarting worker...", err);
+      initWorker();
     };
 
     worker.postMessage("uci");
     worker.postMessage("isready");
-
-    return () => {
-      worker.terminate();
-    };
   }, []);
+
+  useEffect(() => {
+    initWorker();
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+      }
+    };
+  }, [initWorker]);
 
   const analyzePosition = useCallback((fen: string, depth: number = 18) => {
     if (!workerRef.current) return;
-    currentFenRef.current = fen;
 
+    // Queue request if another search is in progress
+    currentFenRef.current = fen;
     workerRef.current.postMessage("stop");
     setIsAnalyzing(true);
 
