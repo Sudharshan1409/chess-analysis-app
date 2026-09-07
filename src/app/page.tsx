@@ -6,6 +6,7 @@ import { useStockfish } from "@/lib/useStockfish";
 import { EvalBar } from "@/components/EvalBar";
 import { MoveList, AnalyzedMove } from "@/components/MoveList";
 import { PgnFenModal } from "@/components/PgnFenModal";
+import { PromotionModal } from "@/components/PromotionModal";
 import {
   RotateCcw,
   SkipBack,
@@ -31,6 +32,13 @@ export default function AnalysisPage() {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Promotion state
+  const [pendingPromotion, setPendingPromotion] = useState<{
+    from: Square;
+    to: Square;
+    color: "w" | "b";
+  } | null>(null);
 
   // Stockfish Engine Hook (MultiPV 3 lines)
   const { isReady, isAnalyzing, evalData, analyzePosition } = useStockfish();
@@ -110,11 +118,28 @@ export default function AnalysisPage() {
     setArrows([]);
   }, [evalData.lines]);
 
-  // Make move
-  const makeMove = (from: Square, to: Square) => {
+  // Make move (with promotion support)
+  const makeMove = (from: Square, to: Square, promotionPiece?: "q" | "r" | "b" | "n") => {
     const activeChess = getActiveChess();
+
+    // Check if move is a pawn promotion
+    const piece = activeChess.get(from);
+    const isPawn = piece?.type === "p";
+    const isPromotionRank = (piece?.color === "w" && to[1] === "8") || (piece?.color === "b" && to[1] === "1");
+
+    if (isPawn && isPromotionRank && !promotionPiece) {
+      // Prompt promotion selection modal
+      setPendingPromotion({ from, to, color: piece.color });
+      return true;
+    }
+
     try {
-      const move = activeChess.move({ from, to, promotion: "q" });
+      const move = activeChess.move({
+        from,
+        to,
+        promotion: promotionPiece || "q",
+      });
+
       if (move) {
         const newHistory = history.slice(0, currentMoveIndex + 1);
         const nextMoveNumber = Math.floor(newHistory.length / 2) + 1;
@@ -134,6 +159,7 @@ export default function AnalysisPage() {
         setCurrentMoveIndex(updatedHistory.length - 1);
         setSelectedSquare(null);
         setValidMoves([]);
+        setPendingPromotion(null);
         playSound(move, activeChess);
         return true;
       }
@@ -142,6 +168,7 @@ export default function AnalysisPage() {
     }
     setSelectedSquare(null);
     setValidMoves([]);
+    setPendingPromotion(null);
     return false;
   };
 
@@ -473,7 +500,7 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Mobile Bottom Navigation Controls Bar (Directly below White player info so no scrolling required) */}
+          {/* Mobile Bottom Navigation Controls Bar */}
           <div className="lg:hidden w-full bg-[#1e1c18] border-t border-[#312e2b] p-2 mt-2 rounded-lg shrink-0">
             <div className="grid grid-cols-4 gap-2">
               <button
@@ -619,6 +646,18 @@ export default function AnalysisPage() {
           </div>
         </div>
       </div>
+
+      {/* Pawn Promotion Options Modal */}
+      <PromotionModal
+        isOpen={pendingPromotion !== null}
+        color={pendingPromotion?.color || "w"}
+        onSelect={(piece) => {
+          if (pendingPromotion) {
+            makeMove(pendingPromotion.from, pendingPromotion.to, piece);
+          }
+        }}
+        onClose={() => setPendingPromotion(null)}
+      />
 
       <PgnFenModal
         isOpen={isModalOpen}
