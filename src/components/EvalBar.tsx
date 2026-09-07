@@ -61,29 +61,29 @@ export const EvalBar: React.FC<EvalBarProps> = ({
   const bottomPercent = 100 - topPercent;
 
   return (
-    <div className="relative w-7 sm:w-8 h-full bg-[#1a1815] overflow-hidden flex flex-col justify-between border-r border-[#312e2b] select-none font-bold text-xs shrink-0 z-30">
+    <div className="relative w-4.5 h-full bg-[#1e1c18] overflow-hidden flex flex-col justify-between select-none font-bold text-[9px] shrink-0 z-10 border-r border-[#2d2b27]">
       {/* Top Section */}
       <div
-        className="w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-start justify-center pt-1.5"
+        className="w-full transition-all duration-300 ease-out flex items-start justify-center pt-1"
         style={{
           height: `${topPercent}%`,
           backgroundColor: topIsWhite ? "#ffffff" : "#262421",
           color: topIsWhite ? "#262421" : "#989795",
         }}
       >
-        <span>{topPercent > 8 ? evalText : ""}</span>
+        <span>{topPercent > 12 ? evalText : ""}</span>
       </div>
 
       {/* Bottom Section */}
       <div
-        className="w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-end justify-center pb-1.5"
+        className="w-full transition-all duration-300 ease-out flex items-end justify-center pb-1"
         style={{
           height: `${bottomPercent}%`,
           backgroundColor: topIsWhite ? "#262421" : "#ffffff",
           color: topIsWhite ? "#989795" : "#262421",
         }}
       >
-        <span>{bottomPercent > 8 ? evalText : ""}</span>
+        <span>{bottomPercent > 12 ? evalText : ""}</span>
       </div>
 
       {isAnalyzing && (
