@@ -286,7 +286,7 @@ export default function AnalysisPage() {
   const displayFiles = boardOrientation === "white" ? files : [...files].reverse();
 
   return (
-    <div className="h-screen w-screen bg-[#21201d] text-gray-200 flex flex-col lg:flex-row font-sans select-none overflow-hidden">
+    <div className="min-h-screen lg:h-screen w-screen bg-[#21201d] text-gray-200 flex flex-col lg:flex-row font-sans select-none overflow-x-hidden lg:overflow-hidden">
       {/* 1. Left Chess.com Navigation Bar (Desktop) */}
       <aside className="hidden lg:flex w-48 h-full bg-[#1d1b18] border-r border-[#2d2b27] flex-col justify-between p-3 shrink-0">
         <div className="space-y-4">
@@ -336,7 +336,7 @@ export default function AnalysisPage() {
       </header>
 
       {/* 2. Main Workspace (Full Viewport Height Layout) */}
-      <div className="flex-1 h-full flex flex-col lg:flex-row p-2 lg:p-4 gap-4 items-center lg:items-stretch justify-between overflow-hidden">
+      <div className="flex-1 h-full flex flex-col lg:flex-row p-2 lg:p-4 gap-4 items-center lg:items-stretch justify-between overflow-y-auto lg:overflow-hidden">
         {/* Center Main Board Area - Expands vertically to fill ~calc(100vh - 40px) */}
         <div className="flex-1 h-full flex flex-col items-center justify-between min-w-0">
           {/* Top Player Info (Black) */}
