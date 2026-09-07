@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Chess, Square } from "chess.js";
+import { Chessboard } from "react-chessboard";
 import { useStockfish } from "@/lib/useStockfish";
 import { EvalBar } from "@/components/EvalBar";
 import { MoveList, AnalyzedMove, MoveClassification } from "@/components/MoveList";
@@ -22,16 +23,51 @@ import confetti from "canvas-confetti";
 export default function AnalysisPage() {
   const [game, setGame] = useState(new Chess());
   const [history, setHistory] = useState<AnalyzedMove[]>([]);
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1); // -1 = initial position
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   const [boardOrientation, setBoardOrientation] = useState<"white" | "black">("white");
-  const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
-  const [validMoves, setValidMoves] = useState<Square[]>([]);
+  const [arrows, setArrows] = useState<[Square, Square, string?][]>([]);
+  const [optionSquares, setOptionSquares] = useState<Record<string, { background?: string; borderRadius?: string }>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAutoAnalyzing, setIsAutoAnalyzing] = useState(false);
   const [autoAnalyzeProgress, setAutoAnalyzeProgress] = useState(0);
 
   // Stockfish Engine
   const { isReady, isAnalyzing, evalData, analyzePosition } = useStockfish();
+
+  // Helper to play Chess.com audio effects
+  const playSound = useCallback((move: any, newGame?: Chess) => {
+    let audioFile = "/sounds/move-self.webm";
+    let followUpSound: string | null = null;
+
+    if (move === "illegal") {
+      audioFile = "/sounds/illegal.webm";
+    } else if (move === "start") {
+      audioFile = "/sounds/game-start.webm";
+    } else if (move.flags && move.flags.includes("p")) {
+      audioFile = "/sounds/promote.webm";
+    } else if (newGame && newGame.isCheckmate()) {
+      audioFile = "/sounds/move-check.webm";
+      followUpSound = "/sounds/game-end.webm";
+    } else if (newGame && newGame.isCheck()) {
+      audioFile = "/sounds/move-check.webm";
+    } else if (newGame && newGame.isDraw()) {
+      audioFile = "/sounds/game-end.webm";
+    } else if (move.flags && (move.flags.includes("c") || move.flags.includes("e"))) {
+      audioFile = "/sounds/capture.webm";
+    } else if (move.flags && (move.flags.includes("k") || move.flags.includes("q"))) {
+      audioFile = "/sounds/castle.webm";
+    }
+
+    const audio = new Audio(audioFile);
+    audio.play().then(() => {
+      if (followUpSound) {
+        setTimeout(() => {
+          const endAudio = new Audio(followUpSound!);
+          endAudio.play().catch(() => {});
+        }, 600);
+      }
+    }).catch(() => {});
+  }, []);
 
   // Helper to get FEN at current index
   const getCurrentFen = useCallback(() => {
@@ -57,92 +93,134 @@ export default function AnalysisPage() {
     }
   }, [currentMoveIndex, isReady, getCurrentFen, analyzePosition, isAutoAnalyzing]);
 
-  // Update history eval score
+  // Update engine arrows
   useEffect(() => {
-    if (currentMoveIndex >= 0 && currentMoveIndex < history.length && evalData.score !== null) {
-      setHistory((prev) => {
-        const next = [...prev];
-        const cur = next[currentMoveIndex];
-        if (cur) {
-          cur.evalScore = evalData.score;
-          cur.evalMate = evalData.mate;
-          cur.bestMoveSan = evalData.bestMove || undefined;
-        }
-        return next;
-      });
-    }
-  }, [evalData, currentMoveIndex]);
-
-  // Make move
-  const makeMove = (from: Square, to: Square) => {
-    const activeChess = getActiveChess();
-    try {
-      const moveResult = activeChess.move({ from, to, promotion: "q" });
-      if (moveResult) {
-        const newHistory = history.slice(0, currentMoveIndex + 1);
-        const nextMoveNumber = Math.floor(newHistory.length / 2) + 1;
-
-        const analyzedMove: AnalyzedMove = {
-          moveNumber: nextMoveNumber,
-          color: moveResult.color,
-          san: moveResult.san,
-          uci: `${moveResult.from}${moveResult.to}`,
-          fen: activeChess.fen(),
-          fenBefore: getCurrentFen(),
-        };
-
-        const updatedHistory = [...newHistory, analyzedMove];
-        setHistory(updatedHistory);
-        setGame(activeChess);
-        setCurrentMoveIndex(updatedHistory.length - 1);
-        setSelectedSquare(null);
-        setValidMoves([]);
-        return true;
-      }
-    } catch (e) {
-      // Invalid move
-    }
-    setSelectedSquare(null);
-    setValidMoves([]);
-    return false;
-  };
-
-  // Square Click
-  const handleSquareClick = (sq: Square) => {
-    const activeChess = getActiveChess();
-    const piece = activeChess.get(sq);
-
-    if (!selectedSquare) {
-      if (piece && piece.color === activeChess.turn()) {
-        setSelectedSquare(sq);
-        const moves = activeChess.moves({ square: sq, verbose: true });
-        setValidMoves(moves.map((m) => m.to as Square));
+    if (evalData.pv && evalData.pv.length > 0) {
+      const bestUci = evalData.pv[0];
+      if (bestUci.length >= 4) {
+        const from = bestUci.substring(0, 2) as Square;
+        const to = bestUci.substring(2, 4) as Square;
+        setArrows([[from, to, "rgb(0, 128, 0)"]]);
       }
     } else {
-      if (selectedSquare === sq) {
-        setSelectedSquare(null);
-        setValidMoves([]);
-      } else {
-        const moved = makeMove(selectedSquare, sq);
-        if (!moved) {
-          if (piece && piece.color === activeChess.turn()) {
-            setSelectedSquare(sq);
-            const moves = activeChess.moves({ square: sq, verbose: true });
-            setValidMoves(moves.map((m) => m.to as Square));
-          } else {
-            setSelectedSquare(null);
-            setValidMoves([]);
-          }
-        }
+      setArrows([]);
+    }
+  }, [evalData.pv]);
+
+  // Function to get legal moves for a square and highlight them
+  const getMoveOptions = (square: Square) => {
+    const activeChess = getActiveChess();
+    const moves = activeChess.moves({
+      square,
+      verbose: true,
+    });
+
+    if (moves.length === 0) {
+      setOptionSquares({});
+      return false;
+    }
+
+    const newSquares: Record<string, { background?: string; borderRadius?: string }> = {};
+    moves.forEach((move) => {
+      const targetPiece = activeChess.get(move.to as Square);
+      const sourcePiece = activeChess.get(square);
+      newSquares[move.to] = {
+        background:
+          targetPiece && sourcePiece && targetPiece.color !== sourcePiece.color
+            ? "radial-gradient(circle, rgba(0,0,0,.15) 85%, transparent 85%)"
+            : "radial-gradient(circle, rgba(0,0,0,.15) 25%, transparent 25%)",
+        borderRadius: "50%",
+      };
+    });
+
+    newSquares[square] = {
+      background: "rgba(255, 255, 0, 0.4)",
+    };
+
+    setOptionSquares(newSquares);
+    return true;
+  };
+
+  // Move handling logic
+  const handleMove = (sourceSquare: Square, targetSquare: Square) => {
+    setOptionSquares({});
+    const activeChess = getActiveChess();
+
+    try {
+      const move = activeChess.move({
+        from: sourceSquare,
+        to: targetSquare,
+        promotion: "q",
+      });
+
+      if (move === null) {
+        playSound("illegal");
+        return false;
       }
+
+      const newHistory = history.slice(0, currentMoveIndex + 1);
+      const nextMoveNumber = Math.floor(newHistory.length / 2) + 1;
+
+      const analyzedMove: AnalyzedMove = {
+        moveNumber: nextMoveNumber,
+        color: move.color,
+        san: move.san,
+        uci: `${move.from}${move.to}`,
+        fen: activeChess.fen(),
+        fenBefore: getCurrentFen(),
+      };
+
+      const updatedHistory = [...newHistory, analyzedMove];
+      setHistory(updatedHistory);
+      setGame(activeChess);
+      setCurrentMoveIndex(updatedHistory.length - 1);
+
+      playSound(move, activeChess);
+      return true;
+    } catch (error) {
+      playSound("illegal");
+      return false;
+    }
+  };
+
+  // Drag and drop handler
+  const onPieceDrop = (sourceSquare: Square, targetSquare: Square) => {
+    return handleMove(sourceSquare, targetSquare);
+  };
+
+  // Square click handler (click-to-move support matching reference app)
+  const onSquareClick = (square: Square) => {
+    const activeChess = getActiveChess();
+    const isMoveOption =
+      Object.keys(optionSquares).includes(square) &&
+      square !==
+        Object.keys(optionSquares).find((key) =>
+          optionSquares[key].background?.includes("255, 255, 0")
+        );
+
+    if (isMoveOption) {
+      const sourceSquare = Object.keys(optionSquares).find((key) =>
+        optionSquares[key].background?.includes("255, 255, 0")
+      ) as Square;
+      if (sourceSquare) {
+        handleMove(sourceSquare, square);
+        return;
+      }
+    }
+
+    const piece = activeChess.get(square);
+    if (piece && piece.color === activeChess.turn()) {
+      getMoveOptions(square);
+    } else {
+      setOptionSquares({});
     }
   };
 
   // Navigation
-  const goToStart = () => { setCurrentMoveIndex(-1); setSelectedSquare(null); setValidMoves([]); };
-  const goToPrev = () => { setCurrentMoveIndex((prev) => Math.max(prev - 1, -1)); setSelectedSquare(null); setValidMoves([]); };
-  const goToNext = () => { setCurrentMoveIndex((prev) => Math.min(prev + 1, history.length - 1)); setSelectedSquare(null); setValidMoves([]); };
-  const goToEnd = () => { setCurrentMoveIndex(history.length - 1); setSelectedSquare(null); setValidMoves([]); };
+  const goToStart = () => { setCurrentMoveIndex(-1); setOptionSquares({}); };
+  const goToPrev = () => { setCurrentMoveIndex((prev) => Math.max(prev - 1, -1)); setOptionSquares({}); };
+  const goToNext = () => { setCurrentMoveIndex((prev) => Math.min(prev + 1, history.length - 1)); setOptionSquares({}); };
+  const goToEnd = () => { setCurrentMoveIndex(history.length - 1); setOptionSquares({}); };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -160,7 +238,7 @@ export default function AnalysisPage() {
     const newGame = new Chess();
     newGame.loadPgn(pgnString);
     const moves = newGame.history({ verbose: true });
-    
+
     const reconstructed: AnalyzedMove[] = [];
     const tempGame = new Chess();
 
@@ -180,6 +258,7 @@ export default function AnalysisPage() {
     setGame(newGame);
     setHistory(reconstructed);
     setCurrentMoveIndex(reconstructed.length - 1);
+    playSound("start");
   };
 
   const handleLoadFen = (fenString: string) => {
@@ -187,6 +266,7 @@ export default function AnalysisPage() {
     setGame(newGame);
     setHistory([]);
     setCurrentMoveIndex(-1);
+    playSound("start");
   };
 
   // Run Game Review
@@ -195,11 +275,21 @@ export default function AnalysisPage() {
     setIsAutoAnalyzing(true);
 
     const reviewedHistory = [...history];
-    const classes: MoveClassification[] = ["best", "excellent", "good", "brilliant", "great", "inaccuracy", "mistake", "blunder"];
+    const classes: MoveClassification[] = [
+      "best",
+      "excellent",
+      "good",
+      "brilliant",
+      "great",
+      "inaccuracy",
+      "mistake",
+      "blunder",
+    ];
 
     for (let i = 0; i < reviewedHistory.length; i++) {
       setAutoAnalyzeProgress(Math.round(((i + 1) / reviewedHistory.length) * 100));
-      reviewedHistory[i].classification = classes[Math.floor(Math.random() * classes.length)];
+      reviewedHistory[i].classification =
+        classes[Math.floor(Math.random() * classes.length)];
       await new Promise((res) => setTimeout(res, 80));
     }
 
@@ -211,23 +301,6 @@ export default function AnalysisPage() {
 
   const activeChess = getActiveChess();
   const currentTurn = activeChess.turn();
-
-  // Render 8x8 Board Grid
-  const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
-  const ranks = ["8", "7", "6", "5", "4", "3", "2", "1"];
-
-  const displayRanks = boardOrientation === "white" ? ranks : [...ranks].reverse();
-  const displayFiles = boardOrientation === "white" ? files : [...files].reverse();
-
-  // Map piece codes to unicode chess symbols
-  const getPieceSymbol = (piece: { type: string; color: string } | null) => {
-    if (!piece) return null;
-    const symbols: Record<string, string> = {
-      w_p: "♙", w_r: "♖", w_n: "♘", w_b: "♗", w_q: "♕", w_k: "♔",
-      b_p: "♟", b_r: "♜", b_n: "♞", b_b: "♝", b_q: "♛", b_k: "♚",
-    };
-    return symbols[`${piece.color}_${piece.type}`] || "";
-  };
 
   return (
     <div className="min-h-screen bg-[#1e1c18] text-gray-100 flex flex-col font-sans select-none">
@@ -277,7 +350,9 @@ export default function AnalysisPage() {
               <Cpu className="w-4 h-4 text-[#81b64c] animate-pulse" />
               <span>Depth {evalData.depth}</span>
               <span className="hidden sm:inline text-gray-500">|</span>
-              <span className="hidden sm:inline">NPS: {evalData.nps ? Math.round(evalData.nps / 1000) + "k" : "0"}</span>
+              <span className="hidden sm:inline">
+                NPS: {evalData.nps ? Math.round(evalData.nps / 1000) + "k" : "0"}
+              </span>
             </div>
             <div className="font-extrabold text-amber-400 text-sm">
               {evalData.mate !== null
@@ -288,7 +363,7 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Board Wrapper with Eval Bar */}
+          {/* Board Wrapper with Eval Bar & React-Chessboard */}
           <div className="w-full max-w-[560px] aspect-square flex rounded-b-lg overflow-hidden shadow-2xl border border-[#312e2b] bg-[#1a1815]">
             <EvalBar
               score={evalData.score}
@@ -298,89 +373,101 @@ export default function AnalysisPage() {
               isAnalyzing={isAnalyzing}
             />
 
-            {/* Custom Interactive Grid Board */}
-            <div className="flex-1 h-full grid grid-cols-8 grid-rows-8 relative bg-[#739552]">
-              {displayRanks.map((r, rIdx) =>
-                displayFiles.map((f, fIdx) => {
-                  const sq = `${f}${r}` as Square;
-                  const isLight = (rIdx + fIdx) % 2 === 0;
-                  const piece = activeChess.get(sq);
-                  const isSelected = selectedSquare === sq;
-                  const isValidTarget = validMoves.includes(sq);
-
-                  return (
-                    <div
-                      key={sq}
-                      onClick={() => handleSquareClick(sq)}
-                      className={`relative flex items-center justify-center cursor-pointer transition-colors ${
-                        isLight ? "bg-[#ebedd0]" : "bg-[#739552]"
-                      } ${isSelected ? "!bg-amber-300/80" : ""}`}
-                    >
-                      {/* Piece Rendering */}
-                      {piece && (
-                        <span
-                          className={`text-3xl sm:text-4xl md:text-5xl font-serif leading-none select-none ${
-                            piece.color === "w" ? "text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]" : "text-black drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]"
-                          }`}
-                        >
-                          {getPieceSymbol(piece)}
-                        </span>
-                      )}
-
-                      {/* Valid Move Indicator */}
-                      {isValidTarget && (
-                        <div
-                          className={`absolute ${
-                            piece ? "inset-0 border-4 border-red-500/60 rounded-full" : "w-3.5 h-3.5 bg-black/25 rounded-full"
-                          }`}
-                        />
-                      )}
-
-                      {/* Rank / File Notation Labels */}
-                      {fIdx === 0 && (
-                        <span className={`absolute top-0.5 left-1 text-[10px] font-bold ${isLight ? "text-[#739552]" : "text-[#ebedd0]"}`}>
-                          {r}
-                        </span>
-                      )}
-                      {rIdx === 7 && (
-                        <span className={`absolute bottom-0.5 right-1 text-[10px] font-bold ${isLight ? "text-[#739552]" : "text-[#ebedd0]"}`}>
-                          {f}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })
-              )}
+            <div className="flex-1 h-full relative">
+              <Chessboard
+                options={{
+                  position: getCurrentFen(),
+                  onPieceDrop: ({ sourceSquare, targetSquare }) => {
+                    if (sourceSquare && targetSquare) {
+                      return onPieceDrop(sourceSquare as Square, targetSquare as Square);
+                    }
+                    return false;
+                  },
+                  onSquareClick: ({ square }) => {
+                    if (square) {
+                      onSquareClick(square as Square);
+                    }
+                  },
+                  boardOrientation,
+                  arrows: arrows.map(([from, to, color]) => ({
+                    startSquare: from,
+                    endSquare: to,
+                    color: color || "rgb(0, 128, 0)",
+                  })),
+                  squareStyles: optionSquares,
+                  allowDragging: true,
+                  boardStyle: {
+                    borderRadius: "0px",
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.5)",
+                  },
+                  darkSquareStyle: { backgroundColor: "#769656" },
+                  lightSquareStyle: { backgroundColor: "#eeeed2" },
+                  pieces: {
+                    wP: () => <img src="https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wp.png" alt="wP" className="w-full h-full object-contain" />,
+                    wN: () => <img src="https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wn.png" alt="wN" className="w-full h-full object-contain" />,
+                    wB: () => <img src="https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wb.png" alt="wB" className="w-full h-full object-contain" />,
+                    wR: () => <img src="https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wr.png" alt="wR" className="w-full h-full object-contain" />,
+                    wQ: () => <img src="https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wq.png" alt="wQ" className="w-full h-full object-contain" />,
+                    wK: () => <img src="https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wk.png" alt="wK" className="w-full h-full object-contain" />,
+                    bP: () => <img src="https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bp.png" alt="bP" className="w-full h-full object-contain" />,
+                    bN: () => <img src="https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bn.png" alt="bN" className="w-full h-full object-contain" />,
+                    bB: () => <img src="https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bb.png" alt="bB" className="w-full h-full object-contain" />,
+                    bR: () => <img src="https://images.chesscomfiles.com/chess-themes/pieces/neo/150/br.png" alt="bR" className="w-full h-full object-contain" />,
+                    bQ: () => <img src="https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bq.png" alt="bQ" className="w-full h-full object-contain" />,
+                    bK: () => <img src="https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bk.png" alt="bK" className="w-full h-full object-contain" />,
+                  },
+                }}
+              />
             </div>
           </div>
 
           {/* Navigation Control Toolbar */}
           <div className="w-full max-w-[560px] bg-[#262421] border border-[#312e2b] rounded-lg mt-2.5 p-2 flex items-center justify-between shadow">
             <div className="flex items-center gap-1">
-              <button onClick={goToStart} className="p-2 text-gray-400 hover:text-white hover:bg-[#312e2b] rounded transition">
+              <button
+                onClick={goToStart}
+                className="p-2 text-gray-400 hover:text-white hover:bg-[#312e2b] rounded transition"
+              >
                 <SkipBack className="w-4 h-4" />
               </button>
-              <button onClick={goToPrev} className="p-2 text-gray-400 hover:text-white hover:bg-[#312e2b] rounded transition">
+              <button
+                onClick={goToPrev}
+                className="p-2 text-gray-400 hover:text-white hover:bg-[#312e2b] rounded transition"
+              >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <button onClick={goToNext} className="p-2 text-gray-400 hover:text-white hover:bg-[#312e2b] rounded transition">
+              <button
+                onClick={goToNext}
+                className="p-2 text-gray-400 hover:text-white hover:bg-[#312e2b] rounded transition"
+              >
                 <ChevronRight className="w-5 h-5" />
               </button>
-              <button onClick={goToEnd} className="p-2 text-gray-400 hover:text-white hover:bg-[#312e2b] rounded transition">
+              <button
+                onClick={goToEnd}
+                className="p-2 text-gray-400 hover:text-white hover:bg-[#312e2b] rounded transition"
+              >
                 <SkipForward className="w-4 h-4" />
               </button>
             </div>
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setBoardOrientation((prev) => (prev === "white" ? "black" : "white"))}
+                onClick={() =>
+                  setBoardOrientation((prev) => (prev === "white" ? "black" : "white"))
+                }
                 className="flex items-center gap-1 px-2.5 py-1.5 bg-[#312e2b] hover:bg-[#3d3a36] text-xs font-bold rounded text-gray-300 transition"
               >
                 <FlipHorizontal className="w-3.5 h-3.5 text-amber-400" />
                 Flip
               </button>
               <button
-                onClick={() => { setGame(new Chess()); setHistory([]); setCurrentMoveIndex(-1); setSelectedSquare(null); setValidMoves([]); }}
+                onClick={() => {
+                  setGame(new Chess());
+                  setHistory([]);
+                  setCurrentMoveIndex(-1);
+                  setOptionSquares({});
+                  playSound("start");
+                }}
                 className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-[#312e2b] rounded transition"
               >
                 <RotateCcw className="w-4 h-4" />
