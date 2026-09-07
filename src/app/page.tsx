@@ -218,10 +218,44 @@ export default function AnalysisPage() {
   };
 
   // Navigation
-  const goToStart = () => { setCurrentMoveIndex(-1); setOptionSquares({}); };
-  const goToPrev = () => { setCurrentMoveIndex((prev) => Math.max(prev - 1, -1)); setOptionSquares({}); };
-  const goToNext = () => { setCurrentMoveIndex((prev) => Math.min(prev + 1, history.length - 1)); setOptionSquares({}); };
-  const goToEnd = () => { setCurrentMoveIndex(history.length - 1); setOptionSquares({}); };
+  const goToStart = () => {
+    setCurrentMoveIndex(-1);
+    setOptionSquares({});
+    playSound("start");
+  };
+  const goToPrev = () => {
+    setCurrentMoveIndex((prev) => {
+      const nextIdx = Math.max(prev - 1, -1);
+      if (nextIdx !== prev) {
+        playSound("self");
+      }
+      return nextIdx;
+    });
+    setOptionSquares({});
+  };
+  const goToNext = () => {
+    setCurrentMoveIndex((prev) => {
+      const nextIdx = Math.min(prev + 1, history.length - 1);
+      if (nextIdx !== prev) {
+        const move = history[nextIdx];
+        if (move) {
+          // Play check/capture/castle/move sound according to that move
+          playSound({ flags: move.uci }, new Chess(move.fen));
+        } else {
+          playSound("self");
+        }
+      }
+      return nextIdx;
+    });
+    setOptionSquares({});
+  };
+  const goToEnd = () => {
+    if (history.length > 0) {
+      setCurrentMoveIndex(history.length - 1);
+      playSound("start");
+    }
+    setOptionSquares({});
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
