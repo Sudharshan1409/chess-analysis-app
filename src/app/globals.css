@@ -3,6 +3,7 @@
 :root {
   --background: #1e1c18;
   --foreground: #ffffff;
+  --board-size: max(320px, min(calc(100vh - 140px), calc(100vw - 740px)));
 }
 
 @theme inline {
@@ -27,3 +28,30 @@ svg, img {
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
+
+.chess-board-section {
+  width: 100%;
+  max-width: min(calc(100vw - 16px), calc(100vh - 220px));
+}
+
+.chess-board-wrapper {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+}
+
+@media (min-width: 1024px) {
+  .chess-board-section {
+    width: var(--board-wrapper-width, calc(var(--board-size) + 48px));
+    max-width: none;
+  }
+
+  .chess-board-wrapper {
+    width: var(--board-size);
+    height: var(--board-size);
+    max-width: var(--board-size);
+    max-height: var(--board-size);
+    aspect-ratio: 1 / 1;
+  }
+}
+

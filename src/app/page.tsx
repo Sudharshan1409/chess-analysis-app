@@ -9,6 +9,8 @@ import { MoveList, AnalyzedMove } from "@/components/MoveList";
 import { PgnFenModal } from "@/components/PgnFenModal";
 import { PromotionModal } from "@/components/PromotionModal";
 import { SettingsModal, SettingsState } from "@/components/SettingsModal";
+import { ChessComGamesModal } from "@/components/ChessComGamesModal";
+import { ChessComGameItem } from "@/app/api/chess/daily-games/route";
 import {
   RotateCcw,
   SkipBack,
@@ -19,11 +21,10 @@ import {
   Upload,
   Cpu,
   Search,
-  Gamepad2,
-  GraduationCap,
-  Tv,
-  Users,
-  Settings
+  Settings,
+  Menu,
+  X,
+  Download,
 } from "lucide-react";
 
 // Pre-load blank image to prevent native drag ghost flash on first drag
@@ -56,7 +57,9 @@ export default function AnalysisPage() {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isChessComModalOpen, setIsChessComModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   // Default assistance settings
   const [settings, setSettings] = useState<SettingsState>({
@@ -348,6 +351,25 @@ export default function AnalysisPage() {
     playSound("start");
   };
 
+  const handleSelectChessComGame = (chessGame: ChessComGameItem) => {
+    let loaded = false;
+    if (chessGame.pgn) {
+      try {
+        handleLoadPgn(chessGame.pgn);
+        loaded = true;
+      } catch (e) {
+        // fallback to FEN
+      }
+    }
+    if (!loaded && chessGame.fen) {
+      handleLoadFen(chessGame.fen);
+    }
+    setBoardOrientation(chessGame.userColor);
+    setIsChessComModalOpen(false);
+    setIsMobileNavOpen(false);
+    playSound("start");
+  };
+
   const activeChess = getActiveChess();
   const currentTurn = activeChess.turn();
 
@@ -382,65 +404,126 @@ export default function AnalysisPage() {
   // Safe MultiPV lines slice
   const displayLines = [0, 1, 2].map((i) => evalData.lines[i] || null);
 
+  const renderNavContent = (isMobile: boolean) => (
+    <div className="flex flex-col h-full justify-between select-none">
+      <div className="space-y-4">
+        {/* Brand / Logo Header */}
+        <div className="flex items-center justify-between px-2 py-1">
+          <div className="flex items-center gap-2">
+            <div className="text-emerald-500 text-2xl font-black leading-none">♟</div>
+            <span className="font-extrabold text-white text-lg tracking-wide">Chess.com</span>
+          </div>
+          {isMobile && (
+            <button
+              onClick={() => setIsMobileNavOpen(false)}
+              className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-[#282622] transition"
+              aria-label="Close navigation"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        {/* 2 Navigation Items */}
+        <nav className="space-y-1 text-sm font-bold">
+          {/* 1. Analysis (Home Page) */}
+          <button
+            onClick={() => {
+              if (isMobile) setIsMobileNavOpen(false);
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-white bg-[#282622] transition text-left cursor-pointer"
+          >
+            <Cpu className="w-5 h-5 text-[#81b64c]" />
+            <span>Analysis</span>
+          </button>
+
+          {/* 2. Import (Chess.com Active Turn Games) */}
+          <button
+            onClick={() => {
+              setIsChessComModalOpen(true);
+              if (isMobile) setIsMobileNavOpen(false);
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#282622] transition text-left cursor-pointer"
+          >
+            <Download className="w-5 h-5 text-amber-400" />
+            <span>Import</span>
+          </button>
+        </nav>
+      </div>
+
+      {/* Import PGN / FEN at bottom where it was before */}
+      <div className="space-y-2 border-t border-[#2d2b27] pt-3">
+        <button
+          onClick={() => {
+            setIsModalOpen(true);
+            if (isMobile) setIsMobileNavOpen(false);
+          }}
+          className="w-full flex items-center gap-2 bg-[#2d2a26] hover:bg-[#383531] text-amber-400 px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer"
+        >
+          <Upload className="w-4 h-4" /> Import PGN / FEN
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen lg:h-screen w-screen bg-[#21201d] text-gray-200 flex flex-col lg:flex-row font-sans select-none overflow-x-hidden lg:overflow-hidden">
       {/* 1. Left Chess.com Navigation Bar (Desktop) */}
       <aside className="hidden lg:flex w-48 h-full bg-[#1d1b18] border-r border-[#2d2b27] flex-col justify-between p-3 shrink-0">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 px-2 py-1">
-            <div className="text-emerald-500 text-2xl font-black">♟</div>
-            <span className="font-extrabold text-white text-lg tracking-wide">Chess.com</span>
-          </div>
-
-          <nav className="space-y-1 text-sm font-bold">
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-[#282622] transition">
-              <Gamepad2 className="w-5 h-5 text-amber-500" /> Play
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-[#282622] transition">
-              <Search className="w-5 h-5 text-emerald-500" /> Puzzles
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-[#282622] transition">
-              <GraduationCap className="w-5 h-5 text-cyan-500" /> Learn
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-white bg-[#282622] transition">
-              <Cpu className="w-5 h-5 text-[#81b64c]" /> Analysis
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-[#282622] transition">
-              <Tv className="w-5 h-5 text-blue-500" /> Watch
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-[#282622] transition">
-              <Users className="w-5 h-5 text-purple-500" /> Community
-            </a>
-          </nav>
-        </div>
-
-        <div className="space-y-2 border-t border-[#2d2b27] pt-3">
-          <button onClick={() => setIsModalOpen(true)} className="w-full flex items-center gap-2 bg-[#2d2a26] hover:bg-[#383531] text-amber-400 px-3 py-2 rounded-lg text-xs font-bold transition">
-            <Upload className="w-4 h-4" /> Import PGN / FEN
-          </button>
-        </div>
+        {renderNavContent(false)}
       </aside>
 
       {/* Mobile Top Header */}
-      <header className="lg:hidden bg-[#1d1b18] border-b border-[#2d2b27] px-4 py-2.5 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-emerald-500 font-black text-xl">♟</span>
-          <span className="font-extrabold text-white text-base">Chess Analysis</span>
+      <header className="lg:hidden bg-[#1d1b18] border-b border-[#2d2b27] px-3 py-2.5 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setIsMobileNavOpen(true)}
+            className="p-1.5 bg-[#2d2a26] text-gray-300 hover:text-white rounded-md border border-[#3c3934] transition"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="w-5 h-5 text-emerald-400" />
+          </button>
+          <div className="flex items-center gap-1.5">
+            <span className="text-emerald-500 font-black text-xl leading-none">♟</span>
+            <span className="font-extrabold text-white text-base">Chess Analysis</span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setIsSettingsOpen(true)} className="p-1.5 bg-[#2d2a26] text-gray-300 rounded-md border border-[#3c3934]">
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-1.5 bg-[#2d2a26] text-gray-300 rounded-md border border-[#3c3934] transition"
+            title="Settings"
+          >
             <Settings className="w-4 h-4 text-amber-400" />
           </button>
-          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-1.5 bg-[#2d2a26] text-amber-400 px-3 py-1.5 rounded-md text-xs font-bold border border-[#3c3934]">
-            <Upload className="w-3.5 h-3.5" /> Import
+          <button
+            onClick={() => setIsChessComModalOpen(true)}
+            className="flex items-center gap-1.5 bg-[#2d2a26] text-amber-400 px-3 py-1.5 rounded-md text-xs font-bold border border-[#3c3934] transition"
+          >
+            <Download className="w-3.5 h-3.5" /> Import
           </button>
         </div>
       </header>
 
+      {/* Mobile Navigation Drawer */}
+      {isMobileNavOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsMobileNavOpen(false)}
+          />
+          {/* Drawer content */}
+          <aside className="fixed inset-y-0 left-0 w-64 max-w-[85vw] bg-[#1d1b18] border-r border-[#2d2b27] p-3.5 shadow-2xl z-10 flex flex-col justify-between">
+            {renderNavContent(true)}
+          </aside>
+        </div>
+      )}
+
       {/* 2. Main Workspace */}
       <div className="flex-1 h-full flex flex-col lg:flex-row p-2 lg:p-4 gap-4 items-center justify-center overflow-y-auto lg:overflow-hidden">
         {/* Center Main Board Area */}
-        <div className="w-full lg:flex-1 lg:h-full flex flex-col items-center justify-between min-w-0">
+        <div className="w-full lg:flex-1 lg:h-full flex flex-col items-center justify-between lg:justify-center min-w-0">
           {/* Horizontal Evaluation Bar for Mobile */}
           {settings.showEvalBar && (
             <div className="lg:hidden w-full shrink-0 mb-1">
@@ -454,39 +537,50 @@ export default function AnalysisPage() {
             </div>
           )}
 
-          {/* Top Player Info (Black) - Prominent font on Mobile (text-sm sm:text-base) */}
-          <div className="w-full lg:w-[max(320px,min(calc(100vw-720px),calc(100vh-140px)))] flex items-center justify-between py-1.5 px-1 text-sm sm:text-base text-gray-200 font-extrabold shrink-0 mx-auto">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#312e2b] flex items-center justify-center text-gray-300 text-sm shadow">👤</div>
-              <span className="text-white text-sm sm:text-base">{boardOrientation === "white" ? "Black" : "White"}</span>
-            </div>
-            <div className="flex items-center gap-2 font-mono">
-              <span className="text-gray-400 text-xs">depth={evalData.depth}</span>
-              <span className="text-amber-400 font-extrabold text-sm sm:text-base">{topScoreFormatted}</span>
-            </div>
-          </div>
-
-          {/* Board and Eval Bar Wrapper */}
-          <div className="w-full lg:w-[max(320px,min(calc(100vw-720px),calc(100vh-140px)))] lg:h-[max(320px,min(calc(100vw-720px),calc(100vh-140px)))] flex items-center justify-center shrink-0 my-0 mx-auto gap-3 lg:gap-4">
-            
-            {/* Vertical Eval Bar for Desktop */}
-            {settings.showEvalBar && (
-              <div className="hidden lg:block h-full shrink-0">
-                <EvalBar
-                  score={topEval?.cp ?? null}
-                  mate={topEval?.mate ?? null}
-                  turn={currentTurn}
-                  orientation={boardOrientation}
-                  isAnalyzing={isAnalyzing}
-                />
+          {/* Unified Board + Players Section */}
+          <div
+            className="chess-board-section flex flex-col items-center justify-center shrink-0 my-auto mx-auto"
+            style={
+              {
+                "--board-wrapper-width": settings.showEvalBar
+                  ? "calc(var(--board-size) + 48px)"
+                  : "var(--board-size)",
+              } as React.CSSProperties
+            }
+          >
+            {/* Top Player Info (Black) - Prominent font on Mobile (text-sm sm:text-base) */}
+            <div className="w-full flex items-center justify-between py-1.5 px-1 text-sm sm:text-base text-gray-200 font-extrabold shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#312e2b] flex items-center justify-center text-gray-300 text-sm shadow">👤</div>
+                <span className="text-white text-sm sm:text-base">{boardOrientation === "white" ? "Black" : "White"}</span>
               </div>
-            )}
+              <div className="flex items-center gap-2 font-mono">
+                <span className="text-gray-400 text-xs">depth={evalData.depth}</span>
+                <span className="text-amber-400 font-extrabold text-sm sm:text-base">{topScoreFormatted}</span>
+              </div>
+            </div>
 
-            {/* Actual Board */}
-            <div className="w-full h-full aspect-square flex shadow-2xl rounded overflow-hidden border border-[#2d2b27] bg-[#1d1b18] relative">
+            {/* Board and Eval Bar Wrapper */}
+            <div className="w-full flex items-center justify-center shrink-0 my-0 mx-auto gap-3 lg:gap-4 lg:h-[var(--board-size)]">
+              
+              {/* Vertical Eval Bar for Desktop */}
+              {settings.showEvalBar && (
+                <div className="hidden lg:block h-full shrink-0">
+                  <EvalBar
+                    score={topEval?.cp ?? null}
+                    mate={topEval?.mate ?? null}
+                    turn={currentTurn}
+                    orientation={boardOrientation}
+                    isAnalyzing={isAnalyzing}
+                  />
+                </div>
+              )}
 
-              {/* Chess.com Authentic Board Theme */}
-              <div className="flex-1 aspect-square grid grid-cols-8 grid-rows-8 relative chess-board-theme overflow-hidden">
+              {/* Actual Board */}
+              <div className="chess-board-wrapper shadow-2xl rounded overflow-hidden border border-[#2d2b27] bg-[#1d1b18] relative shrink-0">
+
+                {/* Chess.com Authentic Board Theme */}
+                <div className="w-full h-full grid grid-cols-8 grid-rows-8 relative chess-board-theme overflow-hidden">
                 {displayRanks.map((r, rIdx) =>
                   displayFiles.map((f, fIdx) => {
                     const sq = `${f}${r}` as Square;
@@ -663,12 +757,13 @@ export default function AnalysisPage() {
           </div>
 
           {/* Bottom Player Info (White) - Prominent font on Mobile (text-sm sm:text-base) */}
-          <div className="w-full lg:w-[max(320px,min(calc(100vw-720px),calc(100vh-140px)))] flex items-center justify-between py-1.5 px-1 text-sm sm:text-base text-gray-200 font-extrabold shrink-0 mx-auto">
+          <div className="w-full flex items-center justify-between py-1.5 px-1 text-sm sm:text-base text-gray-200 font-extrabold shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-200 text-black flex items-center justify-center text-sm font-bold shadow">👤</div>
               <span className="text-white text-sm sm:text-base">{boardOrientation === "white" ? "White" : "Black"}</span>
             </div>
           </div>
+        </div>
 
           {/* Mobile Bottom Navigation Controls Bar (Large touch buttons) */}
           <div className="lg:hidden w-full bg-[#1e1c18] border-t border-[#312e2b] p-2 mt-2 rounded-lg shrink-0">
@@ -824,6 +919,13 @@ export default function AnalysisPage() {
         onClose={() => setIsModalOpen(false)}
         onLoadPgn={handleLoadPgn}
         onLoadFen={handleLoadFen}
+      />
+
+      {/* Chess.com Turn Games Modal */}
+      <ChessComGamesModal
+        isOpen={isChessComModalOpen}
+        onClose={() => setIsChessComModalOpen(false)}
+        onSelectGame={handleSelectChessComGame}
       />
       {/* Custom Drag Ghost Overlay (Bypasses Linux native drag ghost bug) */}
       {dragInfo && (
