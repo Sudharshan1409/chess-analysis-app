@@ -542,14 +542,19 @@ export default function AnalysisPage() {
                         />
                       )}
 
+                      {/* Selected Square Highlight & Move Target Indicators */}
+                      {isSelected && (
+                        <div className="absolute inset-0 bg-[#ccd236]/80 pointer-events-none z-0" />
+                      )}
+
                       {isValidTarget && (
-                        <div
-                          className={`absolute ${
-                            piece
-                              ? "inset-0 border-4 border-red-500/60 rounded-full"
-                              : "w-4 h-4 bg-black/25 rounded-full"
-                          }`}
-                        />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                          {piece ? (
+                            <div className="w-full h-full border-[6px] border-black/20 rounded-full" />
+                          ) : (
+                            <div className="w-[30%] h-[30%] bg-black/20 rounded-full" />
+                          )}
+                        </div>
                       )}
 
                       {fIdx === 0 && (
