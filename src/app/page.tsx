@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Chess, Square } from "chess.js";
 import { useStockfish } from "@/lib/useStockfish";
 import { EvalBar } from "@/components/EvalBar";
@@ -26,7 +26,28 @@ import {
   Settings
 } from "lucide-react";
 
+// Pre-load blank image to prevent native drag ghost flash on first drag
+let blankDragImage: HTMLImageElement | null = null;
+if (typeof window !== "undefined") {
+  blankDragImage = new Image();
+  blankDragImage.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+}
+
 export default function AnalysisPage() {
+  const [dragInfo, setDragInfo] = useState<{ url: string; w: number; h: number; originSq: Square } | null>(null);
+  const dragGhostRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleDragOver = (e: DragEvent) => {
+      if (dragGhostRef.current && e.clientX !== 0) {
+        dragGhostRef.current.style.left = `${e.clientX}px`;
+        dragGhostRef.current.style.top = `${e.clientY}px`;
+      }
+    };
+    window.addEventListener("dragover", handleDragOver);
+    return () => window.removeEventListener("dragover", handleDragOver);
+  }, []);
+
   const [game, setGame] = useState(new Chess());
   const [history, setHistory] = useState<AnalyzedMove[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
@@ -420,21 +441,9 @@ export default function AnalysisPage() {
       <div className="flex-1 h-full flex flex-col lg:flex-row p-2 lg:p-4 gap-4 items-center justify-center overflow-y-auto lg:overflow-hidden">
         {/* Center Main Board Area */}
         <div className="w-full lg:flex-1 lg:h-full flex flex-col items-center justify-between min-w-0">
-          {/* Top Player Info (Black) - Prominent font on Mobile (text-sm sm:text-base) */}
-          <div className="w-full lg:w-[min(740px,calc(100vh-140px))] flex items-center justify-between py-1.5 px-1 text-sm sm:text-base text-gray-200 font-extrabold shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#312e2b] flex items-center justify-center text-gray-300 text-sm shadow">👤</div>
-              <span className="text-white text-sm sm:text-base">{boardOrientation === "white" ? "Black" : "White"}</span>
-            </div>
-            <div className="flex items-center gap-2 font-mono">
-              <span className="text-gray-400 text-xs">depth={evalData.depth}</span>
-              <span className="text-amber-400 font-extrabold text-sm sm:text-base">{topScoreFormatted}</span>
-            </div>
-          </div>
-
           {/* Horizontal Evaluation Bar for Mobile */}
           {settings.showEvalBar && (
-            <div className="lg:hidden w-full shrink-0">
+            <div className="lg:hidden w-full shrink-0 mb-1">
               <HorizontalEvalBar
                 score={topEval?.cp ?? null}
                 mate={topEval?.mate ?? null}
@@ -445,21 +454,36 @@ export default function AnalysisPage() {
             </div>
           )}
 
-          {/* Board Container: 100% full-width aspect-square on Mobile; 740px on Desktop */}
-          <div className="w-full lg:w-[min(740px,calc(100vh-140px))] lg:h-[min(740px,calc(100vh-140px))] aspect-square flex items-center justify-center shrink-0 my-0">
+          {/* Top Player Info (Black) - Prominent font on Mobile (text-sm sm:text-base) */}
+          <div className="w-full lg:w-[max(320px,min(calc(100vw-720px),calc(100vh-140px)))] flex items-center justify-between py-1.5 px-1 text-sm sm:text-base text-gray-200 font-extrabold shrink-0 mx-auto">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#312e2b] flex items-center justify-center text-gray-300 text-sm shadow">👤</div>
+              <span className="text-white text-sm sm:text-base">{boardOrientation === "white" ? "Black" : "White"}</span>
+            </div>
+            <div className="flex items-center gap-2 font-mono">
+              <span className="text-gray-400 text-xs">depth={evalData.depth}</span>
+              <span className="text-amber-400 font-extrabold text-sm sm:text-base">{topScoreFormatted}</span>
+            </div>
+          </div>
+
+          {/* Board and Eval Bar Wrapper */}
+          <div className="w-full lg:w-[max(320px,min(calc(100vw-720px),calc(100vh-140px)))] lg:h-[max(320px,min(calc(100vw-720px),calc(100vh-140px)))] flex items-center justify-center shrink-0 my-0 mx-auto gap-3 lg:gap-4">
+            
+            {/* Vertical Eval Bar for Desktop */}
+            {settings.showEvalBar && (
+              <div className="hidden lg:block h-full shrink-0">
+                <EvalBar
+                  score={topEval?.cp ?? null}
+                  mate={topEval?.mate ?? null}
+                  turn={currentTurn}
+                  orientation={boardOrientation}
+                  isAnalyzing={isAnalyzing}
+                />
+              </div>
+            )}
+
+            {/* Actual Board */}
             <div className="w-full h-full aspect-square flex shadow-2xl rounded overflow-hidden border border-[#2d2b27] bg-[#1d1b18] relative">
-              {/* Vertical Eval Bar for Desktop */}
-              {settings.showEvalBar && (
-                <div className="hidden lg:block h-full">
-                  <EvalBar
-                    score={topEval?.cp ?? null}
-                    mate={topEval?.mate ?? null}
-                    turn={currentTurn}
-                    orientation={boardOrientation}
-                    isAnalyzing={isAnalyzing}
-                  />
-                </div>
-              )}
 
               {/* Chess.com Authentic Board Theme */}
               <div className="flex-1 aspect-square grid grid-cols-8 grid-rows-8 relative chess-board-theme overflow-hidden">
@@ -478,6 +502,15 @@ export default function AnalysisPage() {
                       <div
                         key={sq}
                         onClick={() => handleSquareClick(sq)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const sourceSq = e.dataTransfer.getData("text/plain") as Square;
+                          if (sourceSq && sourceSq !== sq) {
+                            makeMove(sourceSq, sq);
+                          }
+                          setDragInfo(null);
+                        }}
                         className={`relative flex items-center justify-center cursor-pointer ${
                           isSelected ? "bg-[#ccd236]/80" : ""
                         }`}
@@ -486,8 +519,24 @@ export default function AnalysisPage() {
                           <img
                             src={pieceImgUrl}
                             alt={sq}
-                            className="w-full h-full object-contain pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]"
-                            draggable={false}
+                            className={`w-full h-full object-contain cursor-grab active:cursor-grabbing ${dragInfo?.originSq === sq ? 'opacity-0' : ''}`}
+                            draggable={piece?.color === activeChess.turn()}
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData("text/plain", sq);
+                              
+                              const imgEl = e.currentTarget as HTMLImageElement;
+                              const rect = imgEl.getBoundingClientRect();
+                              
+                              if (blankDragImage) {
+                                e.dataTransfer.setDragImage(blankDragImage, 0, 0);
+                              }
+                              
+                              setDragInfo({ url: pieceImgUrl, w: rect.width, h: rect.height, originSq: sq });
+                              setSelectedSquare(sq);
+                              const moves = activeChess.moves({ square: sq, verbose: true });
+                              setValidMoves(moves.map((m) => m.to as Square));
+                            }}
+                            onDragEnd={() => setDragInfo(null)}
                           />
                         )}
 
@@ -517,33 +566,96 @@ export default function AnalysisPage() {
                 )}
 
                 {/* SVG Overlay for Best Move Arrows */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
+                <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none z-20">
                   <defs>
-                    <marker id="arrowhead-cyan" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                      <polygon points="0 0, 6 3, 0 6" fill="rgba(56, 189, 248, 0.95)" />
+                    <marker id="arrowhead-cyan" markerWidth="2.5" markerHeight="3" refX="0" refY="1.5" orient="auto">
+                      <polygon points="0 0, 2.5 1.5, 0 3" fill="#38bdf8" />
                     </marker>
-                    <marker id="arrowhead-red" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                      <polygon points="0 0, 6 3, 0 6" fill="rgba(239, 68, 68, 0.95)" />
+                    <marker id="arrowhead-red" markerWidth="2.5" markerHeight="3" refX="0" refY="1.5" orient="auto">
+                      <polygon points="0 0, 2.5 1.5, 0 3" fill="#ef4444" />
                     </marker>
                   </defs>
 
                   {arrows.map((arr, idx) => {
                     const start = getSquareCenterCoords(arr.from);
                     const end = getSquareCenterCoords(arr.to);
-                    const isRed = arr.color?.includes("239");
-                    return (
-                      <line
-                        key={idx}
-                        x1={`${start.x}%`}
-                        y1={`${start.y}%`}
-                        x2={`${end.x}%`}
-                        y2={`${end.y}%`}
-                        stroke={arr.color || "rgba(56, 189, 248, 0.95)"}
-                        strokeWidth="3.5"
-                        strokeLinecap="round"
-                        markerEnd={isRed ? "url(#arrowhead-red)" : "url(#arrowhead-cyan)"}
-                      />
-                    );
+                    const isRed = arr.color === "red" || arr.color?.includes("239") || arr.color?.includes("red");
+                    const piece = activeChess.get(arr.from);
+                    const isKnight = piece && piece.type === "n";
+
+                    const dx = end.x - start.x;
+                    const dy = end.y - start.y;
+                    const length = Math.sqrt(dx * dx + dy * dy);
+                    const startOffset = 1.25; // 10% of a 12.5% wide square
+                    const endOffset = 5.5; // markerWidth(2.5) * strokeWidth(2.2) = 5.5 units
+
+                    if (isKnight) {
+                      // Knight L-shape logic
+                      const absDx = Math.abs(dx);
+                      const absDy = Math.abs(dy);
+                      
+                      let startX = start.x;
+                      let startY = start.y;
+                      let cornerX = start.x;
+                      let cornerY = start.y;
+                      let endX = end.x;
+                      let endY = end.y;
+
+                      if (absDx > absDy) {
+                        // Moves along X first
+                        startX += (dx > 0 ? 1 : -1) * startOffset;
+                        cornerX = end.x;
+                        cornerY = start.y;
+                        endY -= (dy > 0 ? 1 : -1) * endOffset;
+                      } else {
+                        // Moves along Y first
+                        startY += (dy > 0 ? 1 : -1) * startOffset;
+                        cornerX = start.x;
+                        cornerY = end.y;
+                        endX -= (dx > 0 ? 1 : -1) * endOffset;
+                      }
+
+                      return (
+                        <g key={idx} opacity="0.85">
+                          <path
+                            d={`M ${startX} ${startY} L ${cornerX} ${cornerY} L ${endX} ${endY}`}
+                            fill="none"
+                            stroke={isRed ? "#ef4444" : "#38bdf8"}
+                            strokeWidth="2.2"
+                            strokeLinejoin="miter"
+                            markerEnd={isRed ? "url(#arrowhead-red)" : "url(#arrowhead-cyan)"}
+                          />
+                        </g>
+                      );
+                    } else {
+                      // Normal straight line logic
+                      let startX = start.x;
+                      let startY = start.y;
+                      let endX = end.x;
+                      let endY = end.y;
+                      
+                      if (length > 0) {
+                        startX += (dx / length) * startOffset;
+                        startY += (dy / length) * startOffset;
+                        
+                        endX -= (dx / length) * endOffset;
+                        endY -= (dy / length) * endOffset;
+                      }
+
+                      return (
+                        <g key={idx} opacity="0.85">
+                          <line
+                            x1={`${startX}%`}
+                            y1={`${startY}%`}
+                            x2={`${endX}%`}
+                            y2={`${endY}%`}
+                            stroke={isRed ? "#ef4444" : "#38bdf8"}
+                            strokeWidth="2.2"
+                            markerEnd={isRed ? "url(#arrowhead-red)" : "url(#arrowhead-cyan)"}
+                          />
+                        </g>
+                      );
+                    }
                   })}
                 </svg>
               </div>
@@ -551,7 +663,7 @@ export default function AnalysisPage() {
           </div>
 
           {/* Bottom Player Info (White) - Prominent font on Mobile (text-sm sm:text-base) */}
-          <div className="w-full lg:w-[min(740px,calc(100vh-140px))] flex items-center justify-between py-1.5 px-1 text-sm sm:text-base text-gray-200 font-extrabold shrink-0">
+          <div className="w-full lg:w-[max(320px,min(calc(100vw-720px),calc(100vh-140px)))] flex items-center justify-between py-1.5 px-1 text-sm sm:text-base text-gray-200 font-extrabold shrink-0 mx-auto">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-200 text-black flex items-center justify-center text-sm font-bold shadow">👤</div>
               <span className="text-white text-sm sm:text-base">{boardOrientation === "white" ? "White" : "Black"}</span>
@@ -713,6 +825,22 @@ export default function AnalysisPage() {
         onLoadPgn={handleLoadPgn}
         onLoadFen={handleLoadFen}
       />
+      {/* Custom Drag Ghost Overlay (Bypasses Linux native drag ghost bug) */}
+      {dragInfo && (
+        <div
+          ref={dragGhostRef}
+          className="fixed pointer-events-none z-[100]"
+          style={{
+            width: dragInfo.w,
+            height: dragInfo.h,
+            transform: "translate(-50%, -50%)",
+            left: -9999,
+            top: -9999,
+          }}
+        >
+          <img src={dragInfo.url} alt="ghost" className="w-full h-full object-contain" />
+        </div>
+      )}
     </div>
   );
 }
