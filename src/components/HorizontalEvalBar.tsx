@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useState, useEffect } from "react";
 
 interface HorizontalEvalBarProps {
   score: number | null;
@@ -17,14 +17,16 @@ export const HorizontalEvalBar: React.FC<HorizontalEvalBarProps> = ({
   orientation = "white",
   isAnalyzing = false,
 }) => {
-  const lastScoreRef = useRef<number | null>(0);
-  const lastMateRef = useRef<number | null>(null);
+  const [cachedScore, setCachedScore] = useState<number | null>(0);
+  const [cachedMate, setCachedMate] = useState<number | null>(null);
 
-  if (score !== null) lastScoreRef.current = score;
-  if (mate !== null) lastMateRef.current = mate;
+  useEffect(() => {
+    if (score !== null) setCachedScore(score);
+    if (mate !== null) setCachedMate(mate);
+  }, [score, mate]);
 
-  const currentScore = score ?? lastScoreRef.current;
-  const currentMate = mate ?? lastMateRef.current;
+  const currentScore = score ?? cachedScore;
+  const currentMate = mate ?? cachedMate;
 
   let absoluteScore = currentScore;
   let absoluteMate = currentMate;
@@ -64,11 +66,11 @@ export const HorizontalEvalBar: React.FC<HorizontalEvalBarProps> = ({
     <div className="w-full h-5 bg-[#1a1815] rounded overflow-hidden flex border border-[#312e2b] select-none font-bold text-xs my-1 shadow-inner relative">
       {/* Left Section */}
       <div
-        className="h-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-center justify-start pl-2"
+        className="h-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-center justify-start pl-2 font-extrabold"
         style={{
           width: `${leftPercent}%`,
-          backgroundColor: leftIsWhite ? "#3c3934" : "#1a1815",
-          color: leftIsWhite ? "#ffffff" : "#807d78",
+          backgroundColor: leftIsWhite ? "#ffffff" : "#262421",
+          color: leftIsWhite ? "#262421" : "#989795",
         }}
       >
         <span>{leftPercent > 12 ? evalText : ""}</span>
@@ -76,11 +78,11 @@ export const HorizontalEvalBar: React.FC<HorizontalEvalBarProps> = ({
 
       {/* Right Section */}
       <div
-        className="h-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-center justify-end pr-2"
+        className="h-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-center justify-end pr-2 font-extrabold"
         style={{
           width: `${rightPercent}%`,
-          backgroundColor: leftIsWhite ? "#1a1815" : "#3c3934",
-          color: leftIsWhite ? "#807d78" : "#ffffff",
+          backgroundColor: leftIsWhite ? "#262421" : "#ffffff",
+          color: leftIsWhite ? "#989795" : "#262421",
         }}
       >
         <span>{rightPercent > 12 ? evalText : ""}</span>
