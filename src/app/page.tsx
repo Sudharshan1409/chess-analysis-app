@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Chess, Square } from "chess.js";
 import { useStockfish } from "@/lib/useStockfish";
 import { EvalBar } from "@/components/EvalBar";
@@ -25,13 +25,6 @@ import {
   Users,
   Settings
 } from "lucide-react";
-
-// Pre-load blank image to prevent native drag ghost flash on first drag
-let blankDragImage: HTMLImageElement | null = null;
-if (typeof window !== "undefined") {
-  blankDragImage = new Image();
-  blankDragImage.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-}
 
 export default function AnalysisPage() {
   const [game, setGame] = useState(new Chess());
@@ -59,21 +52,6 @@ export default function AnalysisPage() {
     to: Square;
     color: "w" | "b";
   } | null>(null);
-
-  // Custom Drag Ghost State to fix Linux drag bug
-  const [dragInfo, setDragInfo] = useState<{ url: string; w: number; h: number } | null>(null);
-  const dragGhostRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleDragOver = (e: DragEvent) => {
-      if (dragGhostRef.current && e.clientX !== 0) {
-        dragGhostRef.current.style.left = `${e.clientX}px`;
-        dragGhostRef.current.style.top = `${e.clientY}px`;
-      }
-    };
-    window.addEventListener("dragover", handleDragOver);
-    return () => window.removeEventListener("dragover", handleDragOver);
-  }, []);
 
   // Stockfish Engine Hook (MultiPV 3 lines)
   const { isReady, isAnalyzing, evalData, analyzePosition } = useStockfish();
@@ -440,30 +418,17 @@ export default function AnalysisPage() {
 
       {/* 2. Main Workspace */}
       <div className="flex-1 h-full flex flex-col lg:flex-row p-2 lg:p-4 gap-4 items-center justify-center overflow-y-auto lg:overflow-hidden">
-        {/* Vertical Eval Bar for Desktop - Moved OUTSIDE the main column so player info doesn't stretch across it, and it doesn't squish the board */}
-        {settings.showEvalBar && (
-          <div className="hidden lg:block h-[calc(100vh-80px)] w-7 shrink-0 shadow-2xl rounded overflow-hidden border border-[#2d2b27] mr-1 mt-6">
-            <EvalBar
-              score={topEval?.cp ?? null}
-              mate={topEval?.mate ?? null}
-              turn={currentTurn}
-              orientation={boardOrientation}
-              isAnalyzing={isAnalyzing}
-            />
-          </div>
-        )}
-
-        {/* Center Main Board Container Column */}
-        <div className="w-full lg:w-auto lg:h-[calc(100vh-40px)] flex flex-col items-center justify-between shrink-0">
-          {/* Top Player Info Bar (Black) - Aligned strictly to top left/right of board */}
-          <div className="w-full h-7 flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
+        {/* Center Main Board Area */}
+        <div className="w-full lg:flex-1 lg:h-full flex flex-col items-center justify-between min-w-0">
+          {/* Top Player Info (Black) - Prominent font on Mobile (text-sm sm:text-base) */}
+          <div className="w-full lg:w-[min(740px,calc(100vh-140px))] flex items-center justify-between py-1.5 px-1 text-sm sm:text-base text-gray-200 font-extrabold shrink-0">
             <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded bg-[#312e2b] flex items-center justify-center text-gray-400 text-xs">👤</div>
-              <span>{boardOrientation === "white" ? "Black" : "White"}</span>
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#312e2b] flex items-center justify-center text-gray-300 text-sm shadow">👤</div>
+              <span className="text-white text-sm sm:text-base">{boardOrientation === "white" ? "Black" : "White"}</span>
             </div>
             <div className="flex items-center gap-2 font-mono">
-              <span className="text-gray-400">depth={evalData.depth}</span>
-              <span className="text-amber-400 font-extrabold">{topScoreFormatted}</span>
+              <span className="text-gray-400 text-xs">depth={evalData.depth}</span>
+              <span className="text-amber-400 font-extrabold text-sm sm:text-base">{topScoreFormatted}</span>
             </div>
           </div>
 
@@ -480,165 +445,132 @@ export default function AnalysisPage() {
             </div>
           )}
 
-          {/* Fully Stretched Viewport Square Board Container on Desktop */}
-          <div className="w-full lg:w-auto lg:h-[calc(100vh-100px)] aspect-square flex items-center justify-center shrink-0 my-0 shadow-2xl rounded overflow-hidden border border-[#2d2b27] bg-[#1d1b18]">
-            {/* Chess.com Authentic Board Theme */}
-            <div className="w-full h-full aspect-square grid grid-cols-8 grid-rows-8 relative chess-board-theme overflow-hidden">
-              {displayRanks.map((r, rIdx) =>
-                displayFiles.map((f, fIdx) => {
-                  const sq = `${f}${r}` as Square;
-                  const piece = activeChess.get(sq);
-                  const isSelected = selectedSquare === sq;
-                  const isValidTarget = validMoves.includes(sq);
-
-                  const pieceImgUrl = piece
-                    ? `https://images.chesscomfiles.com/chess-themes/pieces/neo/150/${piece.color}${piece.type}.png`
-                    : null;
-
-                  return (
-                    <div
-                      key={sq}
-                      onClick={() => handleSquareClick(sq)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        const sourceSq = e.dataTransfer.getData("text/plain") as Square;
-                        if (sourceSq && sourceSq !== sq) {
-                          makeMove(sourceSq, sq);
-                        }
-                        setDragInfo(null);
-                      }}
-                      className={`relative flex items-center justify-center cursor-pointer ${
-                        isSelected ? "bg-amber-300/50" : ""
-                      }`}
-                    >
-                      {pieceImgUrl && (
-                        <img
-                          src={pieceImgUrl}
-                          alt={sq}
-                          className="w-full h-full object-contain cursor-grab active:cursor-grabbing"
-                          draggable={piece?.color === activeChess.turn()}
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData("text/plain", sq);
-                            
-                            const imgEl = e.currentTarget as HTMLImageElement;
-                            const rect = imgEl.getBoundingClientRect();
-                            
-                            // Bypass Chromium Linux bug by hiding the native drag ghost
-                            if (blankDragImage) {
-                              e.dataTransfer.setDragImage(blankDragImage, 0, 0);
-                            }
-
-                            // Enable our custom overlay that follows the cursor
-                            setDragInfo({ url: pieceImgUrl, w: rect.width, h: rect.height });
-
-                            setSelectedSquare(sq);
-                            const moves = activeChess.moves({ square: sq, verbose: true });
-                            setValidMoves(moves.map((m) => m.to as Square));
-                          }}
-                          onDragEnd={() => {
-                            setDragInfo(null);
-                          }}
-                        />
-                      )}
-
-                      {/* Selected Square Highlight & Move Target Indicators */}
-                      {isSelected && (
-                        <div className="absolute inset-0 bg-[#ccd236]/80 pointer-events-none z-0" />
-                      )}
-
-                      {isValidTarget && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                          {piece ? (
-                            <div className="w-full h-full border-[6px] border-black/20 rounded-full" />
-                          ) : (
-                            <div className="w-[30%] h-[30%] bg-black/20 rounded-full" />
-                          )}
-                        </div>
-                      )}
-
-                      {fIdx === 0 && (
-                        <span className="absolute top-0.5 left-1 text-[11px] font-bold text-gray-700/80">
-                          {r}
-                        </span>
-                      )}
-                      {rIdx === 7 && (
-                        <span className="absolute bottom-0.5 right-1 text-[10px] font-bold text-gray-700/80">
-                          {f}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })
+          {/* Board Container: 100% full-width aspect-square on Mobile; 740px on Desktop */}
+          <div className="w-full lg:w-[min(740px,calc(100vh-140px))] lg:h-[min(740px,calc(100vh-140px))] aspect-square flex items-center justify-center shrink-0 my-0">
+            <div className="w-full h-full aspect-square flex shadow-2xl rounded overflow-hidden border border-[#2d2b27] bg-[#1d1b18] relative">
+              {/* Vertical Eval Bar for Desktop */}
+              {settings.showEvalBar && (
+                <div className="hidden lg:block h-full">
+                  <EvalBar
+                    score={topEval?.cp ?? null}
+                    mate={topEval?.mate ?? null}
+                    turn={currentTurn}
+                    orientation={boardOrientation}
+                    isAnalyzing={isAnalyzing}
+                  />
+                </div>
               )}
 
-              {/* SVG Overlay for Best Move Arrows */}
-              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none z-20">
-                <defs>
-                  <marker id="arrowhead-cyan" markerWidth="2.5" markerHeight="3" refX="1.2" refY="1.5" orient="auto">
-                    <polygon points="0 0, 2.5 1.5, 0 3" fill="#38bdf8" />
-                  </marker>
-                  <marker id="arrowhead-red" markerWidth="2.5" markerHeight="3" refX="1.2" refY="1.5" orient="auto">
-                    <polygon points="0 0, 2.5 1.5, 0 3" fill="#ef4444" />
-                  </marker>
-                </defs>
+              {/* Chess.com Authentic Board Theme */}
+              <div className="flex-1 aspect-square grid grid-cols-8 grid-rows-8 relative chess-board-theme overflow-hidden">
+                {displayRanks.map((r, rIdx) =>
+                  displayFiles.map((f, fIdx) => {
+                    const sq = `${f}${r}` as Square;
+                    const piece = activeChess.get(sq);
+                    const isSelected = selectedSquare === sq;
+                    const isValidTarget = validMoves.includes(sq);
 
-                {arrows.map((arr, idx) => {
-                  const start = getSquareCenterCoords(arr.from);
-                  const end = getSquareCenterCoords(arr.to);
-                  const isRed = arr.color === "red" || arr.color?.includes("239") || arr.color?.includes("red");
+                    const pieceImgUrl = piece
+                      ? `https://images.chesscomfiles.com/chess-themes/pieces/neo/150/${piece.color}${piece.type}.png`
+                      : null;
 
-                  const dx = end.x - start.x;
-                  const dy = end.y - start.y;
-                  const length = Math.sqrt(dx * dx + dy * dy);
-                  const startOffset = 5.0; // Offset from square center
-                  
-                  let startX = start.x;
-                  let startY = start.y;
-                  if (length > 0) {
-                    startX += (dx / length) * startOffset;
-                    startY += (dy / length) * startOffset;
-                  }
+                    return (
+                      <div
+                        key={sq}
+                        onClick={() => handleSquareClick(sq)}
+                        className={`relative flex items-center justify-center cursor-pointer ${
+                          isSelected ? "bg-[#ccd236]/80" : ""
+                        }`}
+                      >
+                        {pieceImgUrl && (
+                          <img
+                            src={pieceImgUrl}
+                            alt={sq}
+                            className="w-full h-full object-contain pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]"
+                            draggable={false}
+                          />
+                        )}
 
-                  return (
-                    <g key={idx} opacity="0.85">
+                        {isValidTarget && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                            {piece ? (
+                              <div className="w-full h-full border-[6px] border-black/20 rounded-full" />
+                            ) : (
+                              <div className="w-[30%] h-[30%] bg-black/20 rounded-full" />
+                            )}
+                          </div>
+                        )}
+
+                        {fIdx === 0 && (
+                          <span className="absolute top-0.5 left-1 text-[11px] font-bold text-gray-700/80">
+                            {r}
+                          </span>
+                        )}
+                        {rIdx === 7 && (
+                          <span className="absolute bottom-0.5 right-1 text-[10px] font-bold text-gray-700/80">
+                            {f}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+
+                {/* SVG Overlay for Best Move Arrows */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
+                  <defs>
+                    <marker id="arrowhead-cyan" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                      <polygon points="0 0, 6 3, 0 6" fill="rgba(56, 189, 248, 0.95)" />
+                    </marker>
+                    <marker id="arrowhead-red" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                      <polygon points="0 0, 6 3, 0 6" fill="rgba(239, 68, 68, 0.95)" />
+                    </marker>
+                  </defs>
+
+                  {arrows.map((arr, idx) => {
+                    const start = getSquareCenterCoords(arr.from);
+                    const end = getSquareCenterCoords(arr.to);
+                    const isRed = arr.color?.includes("239");
+                    return (
                       <line
-                        x1={`${startX}%`}
-                        y1={`${startY}%`}
+                        key={idx}
+                        x1={`${start.x}%`}
+                        y1={`${start.y}%`}
                         x2={`${end.x}%`}
                         y2={`${end.y}%`}
-                        stroke={isRed ? "#ef4444" : "#38bdf8"}
-                        strokeWidth="2.2"
+                        stroke={arr.color || "rgba(56, 189, 248, 0.95)"}
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
                         markerEnd={isRed ? "url(#arrowhead-red)" : "url(#arrowhead-cyan)"}
                       />
-                    </g>
-                  );
-                })}
-              </svg>
+                    );
+                  })}
+                </svg>
+              </div>
             </div>
           </div>
 
-          {/* Bottom Player Info Bar (White) - Aligned strictly to bottom left/right of board */}
-          <div className="w-full h-7 flex items-center justify-between py-1 px-1 text-xs sm:text-sm text-gray-300 font-bold shrink-0">
+          {/* Bottom Player Info (White) - Prominent font on Mobile (text-sm sm:text-base) */}
+          <div className="w-full lg:w-[min(740px,calc(100vh-140px))] flex items-center justify-between py-1.5 px-1 text-sm sm:text-base text-gray-200 font-extrabold shrink-0">
             <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded bg-gray-200 text-black flex items-center justify-center text-xs">👤</div>
-              <span>{boardOrientation === "white" ? "White" : "Black"}</span>
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-200 text-black flex items-center justify-center text-sm font-bold shadow">👤</div>
+              <span className="text-white text-sm sm:text-base">{boardOrientation === "white" ? "White" : "Black"}</span>
             </div>
           </div>
 
-          {/* Mobile Bottom Navigation Controls Bar */}
+          {/* Mobile Bottom Navigation Controls Bar (Large touch buttons) */}
           <div className="lg:hidden w-full bg-[#1e1c18] border-t border-[#312e2b] p-2 mt-2 rounded-lg shrink-0">
             <div className="grid grid-cols-4 gap-2">
-              <button onClick={goToStart} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
+              <button onClick={goToStart} className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-200 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
                 <SkipBack className="w-5 h-5" />
               </button>
-              <button onClick={goToPrev} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
+              <button onClick={goToPrev} className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-200 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
                 <ChevronLeft className="w-6 h-6" />
               </button>
-              <button onClick={goToNext} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
+              <button onClick={goToNext} className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-200 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
                 <ChevronRight className="w-6 h-6" />
               </button>
-              <button onClick={goToEnd} className="py-2 bg-[#2d2a26] hover:bg-[#383531] text-gray-300 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
+              <button onClick={goToEnd} className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-200 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
                 <SkipForward className="w-5 h-5" />
               </button>
             </div>
@@ -668,7 +600,7 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* Fixed-Height MultiPV Engine Lines Box */}
+          {/* Fixed-Height MultiPV Engine Lines Box (Prominent text on mobile) */}
           {settings.showEngineLines && (
             <div className="bg-[#1e1c18] border-b border-[#312e2b] p-2 space-y-1.5 shrink-0 min-h-[128px]">
               {displayLines.map((line, idx) => {
@@ -680,11 +612,11 @@ export default function AnalysisPage() {
                     : "0.00";
 
                 return (
-                  <div key={idx} className="flex items-center gap-2 text-xs font-mono bg-[#262421] p-2 rounded border border-[#312e2b] h-9">
+                  <div key={idx} className="flex items-center gap-2 text-xs sm:text-sm font-mono bg-[#262421] p-2 rounded border border-[#312e2b] h-9">
                     <span className="bg-[#312e2b] text-amber-400 px-2 py-0.5 rounded font-extrabold text-xs shrink-0">
                       {scoreStr}
                     </span>
-                    <div className="text-gray-300 truncate">
+                    <div className="text-gray-200 truncate font-semibold">
                       {line?.pvSan && line.pvSan.length > 0 ? (
                         <span>
                           <strong className="text-amber-300 mr-1">1. {line.pvSan[0]}</strong>
@@ -781,22 +713,6 @@ export default function AnalysisPage() {
         onLoadPgn={handleLoadPgn}
         onLoadFen={handleLoadFen}
       />
-      {/* Custom Drag Ghost Overlay (Bypasses Linux native drag ghost bug) */}
-      {dragInfo && (
-        <div
-          ref={dragGhostRef}
-          className="fixed pointer-events-none z-[100]"
-          style={{
-            width: dragInfo.w,
-            height: dragInfo.h,
-            transform: "translate(-50%, -50%)",
-            left: -9999, // Will be updated instantly by window dragover
-            top: -9999,
-          }}
-        >
-          <img src={dragInfo.url} alt="ghost" className="w-full h-full object-contain" />
-        </div>
-      )}
     </div>
   );
 }
