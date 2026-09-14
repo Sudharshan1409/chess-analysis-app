@@ -767,7 +767,7 @@ export default function AnalysisPage() {
 
           {/* Mobile Bottom Navigation Controls Bar (Large touch buttons) */}
           <div className="lg:hidden w-full bg-[#1e1c18] border-t border-[#312e2b] p-2 mt-2 rounded-lg shrink-0">
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-5 gap-1.5">
               <button onClick={goToStart} className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-200 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
                 <SkipBack className="w-5 h-5" />
               </button>
@@ -779,6 +779,13 @@ export default function AnalysisPage() {
               </button>
               <button onClick={goToEnd} className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-gray-200 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]">
                 <SkipForward className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setBoardOrientation((prev) => (prev === "white" ? "black" : "white"))}
+                className="py-2.5 bg-[#2d2a26] hover:bg-[#383531] text-amber-400 rounded-lg flex items-center justify-center font-bold transition active:scale-95 border border-[#383531]"
+                title="Flip Board"
+              >
+                <FlipHorizontal className="w-5 h-5" />
               </button>
             </div>
           </div>
