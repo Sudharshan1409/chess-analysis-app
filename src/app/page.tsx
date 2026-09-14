@@ -606,7 +606,7 @@ export default function AnalysisPage() {
                           setDragInfo(null);
                         }}
                         className={`relative flex items-center justify-center cursor-pointer ${
-                          isSelected ? "bg-[#ccd236]/80" : ""
+                          isSelected ? "bg-[#baca2b]" : ""
                         }`}
                       >
                         {pieceImgUrl && (
