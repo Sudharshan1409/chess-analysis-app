@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useRef } from "react";
 
 interface HorizontalEvalBarProps {
   score: number | null;
@@ -17,16 +17,14 @@ export const HorizontalEvalBar: React.FC<HorizontalEvalBarProps> = ({
   orientation = "white",
   isAnalyzing = false,
 }) => {
-  const [cachedScore, setCachedScore] = useState<number | null>(0);
-  const [cachedMate, setCachedMate] = useState<number | null>(null);
+  const lastScoreRef = useRef<number | null>(0);
+  const lastMateRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (score !== null) setCachedScore(score);
-    if (mate !== null) setCachedMate(mate);
-  }, [score, mate]);
+  if (score !== null && score !== undefined) lastScoreRef.current = score;
+  if (mate !== null && mate !== undefined) lastMateRef.current = mate;
 
-  const currentScore = score ?? cachedScore;
-  const currentMate = mate ?? cachedMate;
+  const currentScore = (score !== null && score !== undefined) ? score : lastScoreRef.current;
+  const currentMate = (mate !== null && mate !== undefined) ? mate : lastMateRef.current;
 
   let absoluteScore = currentScore;
   let absoluteMate = currentMate;

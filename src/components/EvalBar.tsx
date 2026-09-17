@@ -20,11 +20,11 @@ export const EvalBar: React.FC<EvalBarProps> = ({
   const lastScoreRef = useRef<number | null>(0);
   const lastMateRef = useRef<number | null>(null);
 
-  if (score !== null) lastScoreRef.current = score;
-  if (mate !== null) lastMateRef.current = mate;
+  if (score !== null && score !== undefined) lastScoreRef.current = score;
+  if (mate !== null && mate !== undefined) lastMateRef.current = mate;
 
-  const currentScore = score ?? lastScoreRef.current;
-  const currentMate = mate ?? lastMateRef.current;
+  const currentScore = (score !== null && score !== undefined) ? score : lastScoreRef.current;
+  const currentMate = (mate !== null && mate !== undefined) ? mate : lastMateRef.current;
 
   let absoluteScore = currentScore;
   let absoluteMate = currentMate;

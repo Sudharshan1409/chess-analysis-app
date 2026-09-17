@@ -53,7 +53,7 @@ export function useStockfish() {
 
       if (line.startsWith("info depth")) {
         const parsed = parseStockfishOutput(line, currentFenRef.current);
-        if (parsed) {
+        if (parsed && parsed.line && (parsed.line.cp !== null || parsed.line.mate !== null)) {
           setEvalData((prev) => {
             const nextLines = [...prev.lines];
             if (parsed.multipvIndex !== undefined && parsed.line) {
