@@ -37,7 +37,7 @@ export const HorizontalEvalBar: React.FC<HorizontalEvalBarProps> = ({
   let evalText = "0.0";
   let whitePercent = 50;
 
-  if (absoluteMate !== null) {
+  if (absoluteMate !== null && absoluteMate !== undefined) {
     if (absoluteMate > 0) {
       evalText = `M${absoluteMate}`;
       whitePercent = 100;
@@ -48,7 +48,7 @@ export const HorizontalEvalBar: React.FC<HorizontalEvalBarProps> = ({
       evalText = "M0";
       whitePercent = 50;
     }
-  } else if (absoluteScore !== null) {
+  } else if (absoluteScore !== null && absoluteScore !== undefined) {
     const cp = absoluteScore / 100;
     evalText = cp > 0 ? `+${cp.toFixed(1)}` : cp.toFixed(1);
 

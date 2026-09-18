@@ -134,6 +134,13 @@ export default function AnalysisPage() {
     return new Chess(fen);
   }, [getCurrentFen]);
 
+  // Handle move navigation safely without triggers that reset Stockfish
+  const handleMoveChange = useCallback((newIndex: number) => {
+    setCurrentMoveIndex(newIndex);
+    setSelectedSquare(null);
+    setValidMoves([]);
+  }, []);
+
   // Re-run engine whenever position changes
   useEffect(() => {
     if (isReady) {
