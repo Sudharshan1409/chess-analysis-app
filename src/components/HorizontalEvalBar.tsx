@@ -3,9 +3,8 @@
 import React, { useRef } from "react";
 
 interface HorizontalEvalBarProps {
-  score: number | null;
-  mate: number | null;
-  turn?: "w" | "b";
+  score: number | null; // Centipawns relative to White
+  mate: number | null;  // Mate in N relative to White
   orientation?: "white" | "black";
   isAnalyzing?: boolean;
 }
@@ -13,7 +12,6 @@ interface HorizontalEvalBarProps {
 export const HorizontalEvalBar: React.FC<HorizontalEvalBarProps> = ({
   score,
   mate,
-  turn = "w",
   orientation = "white",
   isAnalyzing = false,
 }) => {
@@ -23,16 +21,8 @@ export const HorizontalEvalBar: React.FC<HorizontalEvalBarProps> = ({
   if (score !== null && score !== undefined) lastScoreRef.current = score;
   if (mate !== null && mate !== undefined) lastMateRef.current = mate;
 
-  const currentScore = (score !== null && score !== undefined) ? score : lastScoreRef.current;
-  const currentMate = (mate !== null && mate !== undefined) ? mate : lastMateRef.current;
-
-  let absoluteScore = currentScore;
-  let absoluteMate = currentMate;
-
-  if (turn === "b") {
-    if (absoluteScore !== null) absoluteScore = -absoluteScore;
-    if (absoluteMate !== null) absoluteMate = -absoluteMate;
-  }
+  const absoluteScore = (score !== null && score !== undefined) ? score : lastScoreRef.current;
+  const absoluteMate = (mate !== null && mate !== undefined) ? mate : lastMateRef.current;
 
   let evalText = "0.0";
   let whitePercent = 50;

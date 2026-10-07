@@ -533,11 +533,10 @@ export default function AnalysisPage() {
         <div className="w-full lg:flex-1 lg:h-full flex flex-col items-center justify-between lg:justify-center min-w-0">
           {/* Horizontal Evaluation Bar for Mobile */}
           {settings.showEvalBar && (
-            <div className="lg:hidden w-full shrink-0 mb-1">
+            <div className="lg:hidden w-full shrink-0">
               <HorizontalEvalBar
                 score={topEval?.cp ?? null}
                 mate={topEval?.mate ?? null}
-                turn={currentTurn}
                 orientation={boardOrientation}
                 isAnalyzing={isAnalyzing}
               />
@@ -576,7 +575,6 @@ export default function AnalysisPage() {
                   <EvalBar
                     score={topEval?.cp ?? null}
                     mate={topEval?.mate ?? null}
-                    turn={currentTurn}
                     orientation={boardOrientation}
                     isAnalyzing={isAnalyzing}
                   />

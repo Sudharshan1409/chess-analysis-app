@@ -160,6 +160,19 @@ function parseStockfishOutput(
   const mateMatch = line.match(/\bscore mate (-?\d+)/);
   if (mateMatch) mate = parseInt(mateMatch[1], 10);
 
+  // Normalize score to White's perspective immediately
+  if (fen) {
+    try {
+      const turn = fen.split(" ")[1];
+      if (turn === "b") {
+        if (cp !== null) cp = -cp;
+        if (mate !== null) mate = -mate;
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
   let pvUci: string[] = [];
   let pvSan: string[] = [];
   const pvIndex = line.indexOf(" pv ");
