@@ -57,10 +57,19 @@ export function useStockfish() {
           setEvalData((prev) => {
             const nextLines = [...prev.lines];
             if (parsed.multipvIndex !== undefined && parsed.line) {
+              // Ignore lines from lower depths if we already have higher depth data for this multipv line
+              if (
+                nextLines[parsed.multipvIndex] &&
+                prev.depth > (parsed.depth ?? 0)
+              ) {
+                return prev;
+              }
+              
+              // Ensure we only sort when multipv 1 arrives or updates, maintaining multipv 1 at index 0
               nextLines[parsed.multipvIndex] = parsed.line;
             }
             return {
-              depth: parsed.depth !== undefined ? parsed.depth : prev.depth,
+              depth: parsed.depth !== undefined ? Math.max(prev.depth, parsed.depth) : prev.depth,
               nodes: parsed.nodes ?? prev.nodes,
               nps: parsed.nps ?? prev.nps,
               lines: nextLines,
@@ -81,7 +90,7 @@ export function useStockfish() {
           isPendingRef.current = true;
           currentFenRef.current = nextFen;
           setIsAnalyzing(true);
-          setEvalData({ depth: 0, lines: [] });
+          setEvalData((prev) => ({ depth: 0, lines: prev.lines }));
           
           worker.postMessage(`position fen ${nextFen}`);
           worker.postMessage(`go depth 18`);
@@ -120,7 +129,8 @@ export function useStockfish() {
     isPendingRef.current = true;
     currentFenRef.current = fen;
     setIsAnalyzing(true);
-    setEvalData({ depth: 0, lines: [] });
+    // Preserve previous eval lines until depth 1 arrives to avoid jumping to 0.0
+    setEvalData((prev) => ({ depth: 0, lines: prev.lines }));
 
     workerRef.current.postMessage(`position fen ${fen}`);
     workerRef.current.postMessage(`go depth ${depth}`);
